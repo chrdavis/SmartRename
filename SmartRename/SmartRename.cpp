@@ -9,7 +9,9 @@
 HINSTANCE g_hInst;
 
 
-class CSmartRenameDlg : public ISmartRenameView
+class CSmartRenameDlg :
+    public ISmartRenameView,
+    public ISmartRenameModelEvents
 {
 public:
     CSmartRenameDlg() :
@@ -23,6 +25,7 @@ public:
         static const QITAB qit[] =
         {
             QITABENT(CSmartRenameDlg, ISmartRenameView),
+            QITABENT(CSmartRenameDlg, ISmartRenameModelEvents),
             { 0 },
         };
         return QISearch(this, qit, riid, ppv);
@@ -44,9 +47,21 @@ public:
     }
 
     // ISmartRenameView
-    IFACEMETHODIMP Start();
-    IFACEMETHODIMP Stop();
+    IFACEMETHODIMP Show();
+    IFACEMETHODIMP Close();
     IFACEMETHODIMP Update();
+
+    // ISmartRenameModelEvents
+    IFACEMETHODIMP OnItemAdded(_In_ ISmartRenameItem* renameItem);
+    IFACEMETHODIMP OnUpdate(_In_ ISmartRenameItem* renameItem);
+    IFACEMETHODIMP OnError(_In_ ISmartRenameItem* renameItem);
+    IFACEMETHODIMP OnRegExStarted();
+    IFACEMETHODIMP OnRegExCanceled();
+    IFACEMETHODIMP OnRegExCompleted();
+    IFACEMETHODIMP OnRenameStarted();
+    IFACEMETHODIMP OnRenameCompleted();
+
+    static HRESULT s_CreateInstance(_In_ ISmartRenameModel* prm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameView** pprui);
 
 private:
     ~CSmartRenameDlg()
@@ -79,6 +94,8 @@ private:
 
     INT_PTR _DlgProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
 
+    HRESULT _Initialize(_In_ ISmartRenameModel* psrm, _In_opt_ IDataObject* pdo);
+
     void _OnInitDlg();
     void _OnRename();
     void _OnCloseDlg();
@@ -88,20 +105,41 @@ private:
     HRESULT _ReadSettings();
     HRESULT _WriteSettings();
 
-    // Member variables
     long m_refCount = 0;
     HWND m_hwnd = nullptr;
     HICON m_iconMain = nullptr;
+    DWORD m_cookie = 0;
+    CComPtr<ISmartRenameModel> m_spsrm;
+    CComPtr<IDataObject> m_spdo;
 };
+
+HRESULT CSmartRenameDlg::s_CreateInstance(_In_ ISmartRenameModel* prm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameView** pprui)
+{
+    *pprui = nullptr;
+    CSmartRenameDlg *prui = new CSmartRenameDlg();
+    HRESULT hr = prui ? S_OK : E_OUTOFMEMORY;
+    if (SUCCEEDED(hr))
+    {
+        // Pass the ISmartRenameModel to the SmartRenameView so it can subscribe to events
+        hr = prui->_Initialize(prm, pdo);
+        if (SUCCEEDED(hr))
+        {
+            hr = prui->QueryInterface(IID_PPV_ARGS(pprui));
+        }
+        prui->Release();
+    }
+    return hr;
+}
+
 
 // ISmartRenameView
 
-IFACEMETHODIMP CSmartRenameDlg::Start()
+IFACEMETHODIMP CSmartRenameDlg::Show()
 {
     return _DoModal(NULL);
 }
 
-IFACEMETHODIMP CSmartRenameDlg::Stop()
+IFACEMETHODIMP CSmartRenameDlg::Close()
 {
     return S_OK;
 }
@@ -110,6 +148,67 @@ IFACEMETHODIMP CSmartRenameDlg::Update()
 {
     return S_OK;
 }
+
+IFACEMETHODIMP CSmartRenameDlg::OnItemAdded(_In_ ISmartRenameItem*)
+{
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameDlg::OnUpdate(_In_ ISmartRenameItem*)
+{
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameDlg::OnError(_In_ ISmartRenameItem*)
+{
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameDlg::OnRegExStarted()
+{
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameDlg::OnRegExCanceled()
+{
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameDlg::OnRegExCompleted()
+{
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameDlg::OnRenameStarted()
+{
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameDlg::OnRenameCompleted()
+{
+    return S_OK;
+}
+
+HRESULT CSmartRenameDlg::_Initialize(_In_ ISmartRenameModel* psrm, _In_opt_ IDataObject* pdo)
+{
+    // Cache the smart rename model
+    m_spsrm = psrm;
+
+    // Cache the data object for enumeration later
+    m_spdo = pdo;
+
+    // Subscribe to smart rename model events
+    HRESULT hr = m_spsrm->Advise(this, &m_cookie);
+    
+    if (FAILED(hr))
+    {
+        //_Cleanup();
+    }
+
+    return hr;
+}
+
+// TODO: persist settings made in the UI
 
 HRESULT CSmartRenameDlg::_ReadSettings()
 {
@@ -221,8 +320,14 @@ void CSmartRenameDlg::_OnDestroyDlg()
 
 void CSmartRenameDlg::_OnRename()
 {
-    // TODO:
+    // TODO: 
 }
+
+/*void CSmartRenameDlg::_OnRunRenamePreview()
+{
+    // TODO: We should have a interface and event interface that wraps the search/replace/regex inputs and settings/options
+    // TODO: That way the model could respond to changes set via the UI and it will run the rename preview on its own
+}*/
 
 INT_PTR CSmartRenameDlg::_DlgProc(UINT uMsg, WPARAM wParam, LPARAM)
 {
@@ -273,7 +378,8 @@ int WINAPI wWinMain(__in HINSTANCE hInstance, __in_opt HINSTANCE, __in PWSTR, __
         CSmartRenameDlg *pdlg = new CSmartRenameDlg();
         if (pdlg)
         {
-            pdlg->Start();
+            pdlg->Show();
+            pdlg->Close();
             pdlg->Release();
         }
         CoUninitialize();

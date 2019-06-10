@@ -54,8 +54,8 @@ public:
 interface __declspec(uuid("E6679DEB-460D-42C1-A7A8-E25897061C99")) ISmartRenameView : public IUnknown
 {
 public:
-    IFACEMETHOD(Start)() = 0;
-    IFACEMETHOD(Stop)() = 0;
+    IFACEMETHOD(Show)() = 0;
+    IFACEMETHOD(Close)() = 0;
     IFACEMETHOD(Update)() = 0;
 };
 
