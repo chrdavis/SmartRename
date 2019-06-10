@@ -127,13 +127,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="SmartRenameItem.h" />
     <ClInclude Include="SmartRenameInterfaces.h" />
     <ClInclude Include="SmartRenameModel.h" />
     <ClInclude Include="SmartRenameRegEx.h" />
+    <ClInclude Include="srwlock.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>

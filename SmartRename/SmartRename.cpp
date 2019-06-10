@@ -13,9 +13,7 @@ class CSmartRenameDlg : public ISmartRenameView
 {
 public:
     CSmartRenameDlg() :
-        m_refCount(1),
-        m_hwnd(NULL),
-        m_iconMain(NULL)
+        m_refCount(1)
     {
     }
 
@@ -46,9 +44,17 @@ public:
     }
 
     // ISmartRenameView
+    IFACEMETHODIMP Start();
+    IFACEMETHODIMP Stop();
     IFACEMETHODIMP Update();
 
-    HRESULT DoModal(__in_opt HWND hwnd)
+private:
+    ~CSmartRenameDlg()
+    {
+        DeleteObject(m_iconMain);
+    }
+
+    HRESULT _DoModal(__in_opt HWND hwnd)
     {
         HRESULT hr = S_OK;
         INT_PTR ret = DialogBoxParam(g_hInst, MAKEINTRESOURCE(IDD_MAIN), hwnd, s_DlgProc, (LPARAM)this);
@@ -57,12 +63,6 @@ public:
             hr = HRESULT_FROM_WIN32(GetLastError());
         }
         return hr;
-    }
-
-private:
-    ~CSmartRenameDlg()
-    {
-        DeleteObject(m_iconMain);
     }
 
     static INT_PTR CALLBACK s_DlgProc(HWND hdlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -89,12 +89,22 @@ private:
     HRESULT _WriteSettings();
 
     // Member variables
-    long m_refCount;
-    HWND m_hwnd;
-    HICON m_iconMain;
+    long m_refCount = 0;
+    HWND m_hwnd = nullptr;
+    HICON m_iconMain = nullptr;
 };
 
 // ISmartRenameView
+
+IFACEMETHODIMP CSmartRenameDlg::Start()
+{
+    return _DoModal(NULL);
+}
+
+IFACEMETHODIMP CSmartRenameDlg::Stop()
+{
+    return S_OK;
+}
 
 IFACEMETHODIMP CSmartRenameDlg::Update()
 {
@@ -263,7 +273,7 @@ int WINAPI wWinMain(__in HINSTANCE hInstance, __in_opt HINSTANCE, __in PWSTR, __
         CSmartRenameDlg *pdlg = new CSmartRenameDlg();
         if (pdlg)
         {
-            pdlg->DoModal(NULL);
+            pdlg->Start();
             pdlg->Release();
         }
         CoUninitialize();

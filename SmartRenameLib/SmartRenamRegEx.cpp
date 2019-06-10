@@ -30,8 +30,7 @@ IFACEMETHODIMP CSmartRenameRegEx::QueryInterface(_In_ REFIID riid, _Outptr_ void
     return QISearch(this, qit, riid, ppv);
 }
 
-
-HRESULT CSmartRenameRegEx::CreateInstance(_Outptr_ ISmartRenameRegEx ** renameRegEx)
+HRESULT CSmartRenameRegEx::CreateInstance(_Outptr_ ISmartRenameRegEx **renameRegEx)
 {
     *renameRegEx = nullptr;
 
@@ -44,7 +43,6 @@ HRESULT CSmartRenameRegEx::CreateInstance(_Outptr_ ISmartRenameRegEx ** renameRe
     }
     return hr;
 }
-
 
 CSmartRenameRegEx::CSmartRenameRegEx() :
     m_refCount(1)
