@@ -138,7 +138,7 @@
   <ItemGroup>
     <ClCompile Include="SmartRenameItem.cpp" />
     <ClCompile Include="SmartRenameModel.cpp" />
-    <ClCompile Include="SmartRenamRegEx.cpp" />
+    <ClCompile Include="SmartRenameRegEx.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
