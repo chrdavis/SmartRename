@@ -87,8 +87,15 @@ IFACEMETHODIMP CSmartRenameRegEx::put_searchTerm(_In_ PCWSTR searchTerm)
     HRESULT hr = searchTerm ? S_OK : E_INVALIDARG;
     if (SUCCEEDED(hr))
     {
-        CoTaskMemFree(m_searchTerm);
-        hr = SHStrDup(searchTerm, &m_searchTerm);
+        if (m_searchTerm == nullptr || lstrcmp(searchTerm, m_searchTerm) != 0)
+        {
+            CoTaskMemFree(m_searchTerm);
+            hr = SHStrDup(searchTerm, &m_searchTerm);
+            if (SUCCEEDED(hr))
+            {
+                _OnSearchTermChanged();
+            }
+        }
     }
     return hr;
 }
@@ -111,8 +118,15 @@ IFACEMETHODIMP CSmartRenameRegEx::put_replaceTerm(_In_ PCWSTR replaceTerm)
     HRESULT hr = replaceTerm ? S_OK : E_INVALIDARG;
     if (SUCCEEDED(hr))
     {
-        CoTaskMemFree(m_replaceTerm);
-        hr = SHStrDup(replaceTerm, &m_replaceTerm);
+        if (m_replaceTerm == nullptr || lstrcmp(replaceTerm, m_replaceTerm) != 0)
+        {
+            CoTaskMemFree(m_replaceTerm);
+            hr = SHStrDup(replaceTerm, &m_replaceTerm);
+            if (SUCCEEDED(hr))
+            {
+                _OnReplaceTermChanged();
+            }
+        }
     }
     return hr;
 }
@@ -128,6 +142,7 @@ IFACEMETHODIMP CSmartRenameRegEx::put_flags(_In_ DWORD flags)
     if (m_flags != flags)
     {
         m_flags = flags;
+        _OnFlagsChanged();
     }
     return S_OK;
 }
