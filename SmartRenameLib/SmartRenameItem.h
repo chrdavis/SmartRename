@@ -2,7 +2,9 @@
 #include "stdafx.h"
 #include "SmartRenameInterfaces.h"
 
-class CSmartRenameItem : public ISmartRenameItem
+class CSmartRenameItem :
+    public ISmartRenameItem,
+    public ISmartRenameItemFactory
 {
 public:
     // IUnknown
@@ -11,7 +13,8 @@ public:
     IFACEMETHODIMP_(ULONG) Release();
 
     // ISmartRenameItem
-    IFACEMETHODIMP get_Path(_Outptr_ PWSTR* path);
+    IFACEMETHODIMP get_path(_Outptr_ PWSTR* path);
+    IFACEMETHODIMP put_path(_In_ PCWSTR path);
     IFACEMETHODIMP get_originalName(_Outptr_ PWSTR* originalName);
     IFACEMETHODIMP put_newName(_In_ PCWSTR newName);
     IFACEMETHODIMP get_newName(_Outptr_ PWSTR* newName);
@@ -22,12 +25,14 @@ public:
     IFACEMETHODIMP get_id(_Out_ int* id);
     IFACEMETHODIMP Reset();
 
+    // ISmartRenameItemFactory
+    IFACEMETHODIMP Create(_COM_Outptr_ ISmartRenameItem** ppItem)
+    {
+        return CSmartRenameItem::s_CreateInstance(ppItem);
+    }
+
 public:
-    static HRESULT CreateInstance(
-        _In_ PCWSTR fullPath,
-        _In_ bool isFolder,
-        _In_ int id,
-        _Outptr_ ISmartRenameItem** renameItem);
+    static HRESULT s_CreateInstance(_Outptr_ ISmartRenameItem** renameItem);
 
 private:
     CSmartRenameItem();
@@ -41,7 +46,6 @@ private:
 
     void    _SetId(_In_ int id);
     void    _SetIsFolder(_In_ bool isFolder);
-    HRESULT _SetFullPath(_In_ PCWSTR fullPath);
     HRESULT _GetOriginalNameFromFullPath();
 
 private:

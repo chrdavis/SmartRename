@@ -4,7 +4,8 @@
 interface __declspec(uuid("C7F59201-4DE1-4855-A3A2-26FC3279C8A5")) ISmartRenameItem : public IUnknown
 {
 public:
-    IFACEMETHOD(get_Path)(_Outptr_ PWSTR* path) = 0;
+    IFACEMETHOD(get_path)(_Outptr_ PWSTR* path) = 0;
+    IFACEMETHOD(put_path)(_In_ PCWSTR path) = 0;
     IFACEMETHOD(get_originalName)(_Outptr_ PWSTR* originalName) = 0;
     IFACEMETHOD(get_newName)(_Outptr_ PWSTR* newName) = 0;
     IFACEMETHOD(put_newName)(_In_ PCWSTR newName) = 0;
@@ -47,8 +48,10 @@ public:
     IFACEMETHOD(AddItem)(_In_ ISmartRenameItem* pItem) = 0;
     IFACEMETHOD(GetItem)(_In_ UINT index, _COM_Outptr_ ISmartRenameItem** ppItem) = 0;
     IFACEMETHOD(GetItemCount)(_Out_ UINT* count) = 0;
-    IFACEMETHOD(GetSmartRenameItemFactory)(_In_ ISmartRenameItemFactory** ppItemFactory) = 0;
-    IFACEMETHOD(SetSmartRenameItemFactory)(_In_ ISmartRenameItemFactory* pItemFactory) = 0;
+    IFACEMETHOD(get_smartRenameRegEx)(_COM_Outptr_ ISmartRenameItem** ppRegEx);
+    IFACEMETHOD(put_smartRenameRegEx)(_COM_Outptr_ ISmartRenameItem* pRegEx);
+    IFACEMETHOD(get_smartRenameItemFactory)(_In_ ISmartRenameItemFactory** ppItemFactory) = 0;
+    IFACEMETHOD(put_smartRenameItemFactory)(_In_ ISmartRenameItemFactory* pItemFactory) = 0;
 };
 
 interface __declspec(uuid("E6679DEB-460D-42C1-A7A8-E25897061C99")) ISmartRenameView : public IUnknown
@@ -59,8 +62,31 @@ public:
     IFACEMETHOD(Update)() = 0;
 };
 
+enum SmartRenameRegExFlags
+{
+    CaseSensitive = 0x1,
+    MatchAllOccurences = 0x2,
+    UseRegularExpressions = 0x4
+};
+
+interface __declspec(uuid("3ECBA62B-E0F0-4472-AA2E-DEE7A1AA46B9")) ISmartRenameRegExEvents : public IUnknown
+{
+public:
+    IFACEMETHOD(OnSearchTermChanged)(_In_ PCWSTR searchTerm) = 0;
+    IFACEMETHOD(OnReplaceTermChanged)(_In_ PCWSTR replaceTerm) = 0;
+    IFACEMETHOD(OnFlagsChanged)(_In_ DWORD flags) = 0;
+};
+
 interface __declspec(uuid("E3ED45B5-9CE0-47E2-A595-67EB950B9B72")) ISmartRenameRegEx : public IUnknown
 {
 public:
-    IFACEMETHOD(Replace)(_In_ PCWSTR source, _In_ PCWSTR match, _In_ PCWSTR replace, _Outptr_ PWSTR* result) = 0;
+    IFACEMETHOD(Advise)(_In_ ISmartRenameRegExEvents* regExEvents, _Out_ DWORD* cookie) = 0;
+    IFACEMETHOD(UnAdvise)(_In_ DWORD cookie) = 0;
+    IFACEMETHOD(get_searchTerm)(_Outptr_ PWSTR* searchTerm) = 0;
+    IFACEMETHOD(put_searchTerm)(_In_ PCWSTR searchTerm) = 0;
+    IFACEMETHOD(get_replaceTerm)(_Outptr_ PWSTR* replaceTerm) = 0;
+    IFACEMETHOD(put_replaceTerm)(_In_ PCWSTR replaceTerm) = 0;
+    IFACEMETHOD(get_flags)(_Out_ DWORD* flags) = 0;
+    IFACEMETHOD(put_flags)(_In_ DWORD flags) = 0;
+    IFACEMETHOD(Replace)(_In_ PCWSTR source, _Outptr_ PWSTR* result) = 0;
 };

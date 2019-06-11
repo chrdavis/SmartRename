@@ -21,6 +21,7 @@ IFACEMETHODIMP CSmartRenameModel::QueryInterface(_In_ REFIID riid, _Outptr_ void
 {
     static const QITAB qit[] = {
         QITABENT(CSmartRenameModel, ISmartRenameModel),
+        QITABENT(CSmartRenameModel, ISmartRenameRegExEvents),
         { 0 }
     };
     return QISearch(this, qit, riid, ppv);
@@ -120,7 +121,25 @@ IFACEMETHODIMP CSmartRenameModel::GetItemCount(_Out_ UINT* count)
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameModel::GetSmartRenameItemFactory(_In_ ISmartRenameItemFactory** ppItemFactory)
+IFACEMETHODIMP CSmartRenameModel::get_smartRenameRegEx(_COM_Outptr_ ISmartRenameRegEx** ppRegEx)
+{
+    HRESULT hr = E_FAIL;
+    if (m_spRegEx)
+    {
+        hr = S_OK;
+        *ppRegEx = m_spRegEx;
+        (*ppRegEx)->AddRef();
+    }
+    return hr;
+}
+
+IFACEMETHODIMP CSmartRenameModel::put_smartRenameRegEx(_COM_Outptr_ ISmartRenameRegEx* pRegEx)
+{
+    m_spRegEx = pRegEx;
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameModel::get_smartRenameItemFactory(_In_ ISmartRenameItemFactory** ppItemFactory)
 {
     HRESULT hr = E_FAIL;
     if (m_spItemFactory)
@@ -132,9 +151,27 @@ IFACEMETHODIMP CSmartRenameModel::GetSmartRenameItemFactory(_In_ ISmartRenameIte
     return hr;
 }
 
-IFACEMETHODIMP CSmartRenameModel::SetSmartRenameItemFactory(_In_ ISmartRenameItemFactory* pItemFactory)
+IFACEMETHODIMP CSmartRenameModel::put_smartRenameItemFactory(_In_ ISmartRenameItemFactory* pItemFactory)
 {
     m_spItemFactory = pItemFactory;
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameModel::OnSearchTermChanged(_In_ PCWSTR /*searchTerm*/)
+{
+    // TODO: Cancel and restart rename preview thread
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameModel::OnReplaceTermChanged(_In_ PCWSTR /*replaceTerm*/)
+{
+    // TODO: Cancel and restart rename preview thread
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameModel::OnFlagsChanged(_In_ DWORD /*flags*/)
+{
+    // TODO: Cancel and restart rename preview thread
     return S_OK;
 }
 
@@ -169,7 +206,14 @@ DWORD WINAPI CSmartRenameModel::s_regexWorkerThread(void* pvoid)
     return 0;
 }
 
-HRESULT CSmartRenameModel::_OnItemAdded(_In_ ISmartRenameItem* renameItem)
+void CSmartRenameModel::_Cancel()
+{
+    SetEvent(m_startFileOpWorkerEvent);
+    SetEvent(m_startRegExWorkerEvent);
+    SetEvent(m_cancelRegExWorkerEvent);
+}
+
+void CSmartRenameModel::_OnItemAdded(_In_ ISmartRenameItem* renameItem)
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
@@ -180,11 +224,9 @@ HRESULT CSmartRenameModel::_OnItemAdded(_In_ ISmartRenameItem* renameItem)
             it->pEvents->OnItemAdded(renameItem);
         }
     }
-
-    return S_OK;
 }
 
-HRESULT CSmartRenameModel::_OnUpdate(_In_ ISmartRenameItem* renameItem)
+void CSmartRenameModel::_OnUpdate(_In_ ISmartRenameItem* renameItem)
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
@@ -195,11 +237,9 @@ HRESULT CSmartRenameModel::_OnUpdate(_In_ ISmartRenameItem* renameItem)
             it->pEvents->OnUpdate(renameItem);
         }
     }
-
-    return S_OK;
 }
 
-HRESULT CSmartRenameModel::_OnError(_In_ ISmartRenameItem* renameItem)
+void CSmartRenameModel::_OnError(_In_ ISmartRenameItem* renameItem)
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
@@ -210,11 +250,9 @@ HRESULT CSmartRenameModel::_OnError(_In_ ISmartRenameItem* renameItem)
             it->pEvents->OnError(renameItem);
         }
     }
-
-    return S_OK;
 }
 
-HRESULT CSmartRenameModel::_OnRegExStarted()
+void CSmartRenameModel::_OnRegExStarted()
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
@@ -225,11 +263,9 @@ HRESULT CSmartRenameModel::_OnRegExStarted()
             it->pEvents->OnRegExStarted();
         }
     }
-
-    return S_OK;
 }
 
-HRESULT CSmartRenameModel::_OnRegExCanceled()
+void CSmartRenameModel::_OnRegExCanceled()
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
@@ -240,11 +276,9 @@ HRESULT CSmartRenameModel::_OnRegExCanceled()
             it->pEvents->OnRegExCanceled();
         }
     }
-
-    return S_OK;
 }
 
-HRESULT CSmartRenameModel::_OnRegExCompleted()
+void CSmartRenameModel::_OnRegExCompleted()
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
@@ -255,11 +289,9 @@ HRESULT CSmartRenameModel::_OnRegExCompleted()
             it->pEvents->OnRegExCompleted();
         }
     }
-
-    return S_OK;
 }
 
-HRESULT CSmartRenameModel::_OnRenameStarted()
+void CSmartRenameModel::_OnRenameStarted()
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
@@ -270,11 +302,9 @@ HRESULT CSmartRenameModel::_OnRenameStarted()
             it->pEvents->OnRenameStarted();
         }
     }
-
-    return S_OK;
 }
 
-HRESULT CSmartRenameModel::_OnRenameCompleted()
+void CSmartRenameModel::_OnRenameCompleted()
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
@@ -285,7 +315,5 @@ HRESULT CSmartRenameModel::_OnRenameCompleted()
             it->pEvents->OnRenameCompleted();
         }
     }
-
-    return S_OK;
 }
 

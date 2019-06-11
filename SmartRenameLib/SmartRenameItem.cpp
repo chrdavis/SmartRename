@@ -21,18 +21,35 @@ IFACEMETHODIMP CSmartRenameItem::QueryInterface(_In_ REFIID riid, _Outptr_ void*
 {
     static const QITAB qit[] = {
         QITABENT(CSmartRenameItem, ISmartRenameItem),
+        QITABENT(CSmartRenameItem, ISmartRenameItemFactory),
         { 0 }
     };
     return QISearch(this, qit, riid, ppv);
 }
 
-IFACEMETHODIMP CSmartRenameItem::get_Path(_Outptr_ PWSTR* path)
+IFACEMETHODIMP CSmartRenameItem::get_path(_Outptr_ PWSTR* path)
 {
     HRESULT hr = m_fullPath ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
     {
         *path = StrDup(m_fullPath);
         hr = (*path) ? S_OK : E_OUTOFMEMORY;
+    }
+    return hr;
+}
+
+IFACEMETHODIMP CSmartRenameItem::put_path(_In_ PCWSTR path)
+{
+    HRESULT hr = (path && wcslen(path) > 0) ? S_OK : E_INVALIDARG;
+    if (SUCCEEDED(hr))
+    {
+        CoTaskMemFree(m_fullPath);
+        m_fullPath = StrDup(path);
+        hr = m_fullPath ? S_OK : E_OUTOFMEMORY;
+        if (SUCCEEDED(hr))
+        {
+            hr = _GetOriginalNameFromFullPath();
+        }
     }
     return hr;
 }
@@ -103,11 +120,7 @@ IFACEMETHODIMP CSmartRenameItem::Reset()
     return S_OK;
 }
 
-HRESULT CSmartRenameItem::CreateInstance(
-    _In_ PCWSTR fullPath,
-    _In_ bool isFolder,
-    _In_ int id,
-    _Outptr_ ISmartRenameItem** renameItem)
+HRESULT CSmartRenameItem::s_CreateInstance(_Outptr_ ISmartRenameItem** renameItem)
 {
     *renameItem = nullptr;
 
@@ -115,19 +128,7 @@ HRESULT CSmartRenameItem::CreateInstance(
     HRESULT hr = newRenameItem ? S_OK : E_OUTOFMEMORY;
     if (SUCCEEDED(hr))
     {
-        newRenameItem->_SetId(id);
-        newRenameItem->_SetIsFolder(isFolder);
-        hr = newRenameItem->_SetFullPath(fullPath);
-        if (SUCCEEDED(hr))
-        {
-            hr = newRenameItem->_GetOriginalNameFromFullPath();
-        }
-
-        if (SUCCEEDED(hr))
-        {
-            hr = newRenameItem->QueryInterface(IID_PPV_ARGS(renameItem));
-        }
-
+        hr = newRenameItem->QueryInterface(IID_PPV_ARGS(renameItem));
         newRenameItem->Release();
     }
     return hr;
@@ -153,18 +154,6 @@ void CSmartRenameItem::_SetId(_In_ int id)
 void CSmartRenameItem::_SetIsFolder(_In_ bool isFolder)
 {
     m_isFolder = isFolder;
-}
-
-HRESULT CSmartRenameItem::_SetFullPath(_In_ PCWSTR fullPath)
-{
-    HRESULT hr = (fullPath && wcslen(fullPath) > 0) ? S_OK : E_INVALIDARG;
-    if (SUCCEEDED(hr))
-    {
-        CoTaskMemFree(m_fullPath);
-        m_fullPath = StrDup(fullPath);
-        hr = m_fullPath ? S_OK : E_OUTOFMEMORY;
-    }
-    return hr;
 }
 
 HRESULT CSmartRenameItem::_GetOriginalNameFromFullPath()

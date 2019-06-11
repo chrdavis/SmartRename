@@ -3,6 +3,7 @@
 #include <regex>
 #include <string>
 
+
 using namespace std;
 
 IFACEMETHODIMP_(ULONG) CSmartRenameRegEx::AddRef()
@@ -21,7 +22,7 @@ IFACEMETHODIMP_(ULONG) CSmartRenameRegEx::Release()
     return refCount;
 }
 
-IFACEMETHODIMP CSmartRenameRegEx::QueryInterface(_In_ REFIID riid, _Outptr_ void **ppv)
+IFACEMETHODIMP CSmartRenameRegEx::QueryInterface(_In_ REFIID riid, _Outptr_ void** ppv)
 {
     static const QITAB qit[] = {
         QITABENT(CSmartRenameRegEx, ISmartRenameRegEx),
@@ -30,7 +31,108 @@ IFACEMETHODIMP CSmartRenameRegEx::QueryInterface(_In_ REFIID riid, _Outptr_ void
     return QISearch(this, qit, riid, ppv);
 }
 
-HRESULT CSmartRenameRegEx::CreateInstance(_Outptr_ ISmartRenameRegEx **renameRegEx)
+IFACEMETHODIMP CSmartRenameRegEx::Advise(ISmartRenameRegExEvents* regExEvents, DWORD* cookie)
+{
+    CSRWExclusiveAutoLock lock(&m_lockEvents);
+    m_cookie++;
+    SMART_RENAME_REGEX_EVENT srre;
+    srre.cookie = m_cookie;
+    srre.pEvents = regExEvents;
+    regExEvents->AddRef();
+    m_smartRenameRegExEvents.push_back(srre);
+
+    *cookie = m_cookie;
+
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameRegEx::UnAdvise(DWORD cookie)
+{
+    HRESULT hr = E_FAIL;
+    CSRWExclusiveAutoLock lock(&m_lockEvents);
+
+    for (std::vector<SMART_RENAME_REGEX_EVENT>::iterator it = m_smartRenameRegExEvents.begin(); it != m_smartRenameRegExEvents.end(); ++it)
+    {
+        if (it->cookie == cookie)
+        {
+            hr = S_OK;
+            it->cookie = 0;
+            if (it->pEvents)
+            {
+                it->pEvents->Release();
+                it->pEvents = nullptr;
+            }
+            break;
+        }
+    }
+
+    return hr;
+}
+
+IFACEMETHODIMP CSmartRenameRegEx::get_searchTerm(_Outptr_ PWSTR* searchTerm)
+{
+    CSRWSharedAutoLock lock(&m_lock);
+    *searchTerm = nullptr;
+    HRESULT hr = m_searchTerm ? S_OK : E_FAIL;
+    if (SUCCEEDED(hr))
+    {
+        hr = SHStrDup(m_searchTerm, searchTerm);
+    }
+    return hr;
+}
+
+IFACEMETHODIMP CSmartRenameRegEx::put_searchTerm(_In_ PCWSTR searchTerm)
+{
+    CSRWExclusiveAutoLock lock(&m_lock);
+    HRESULT hr = searchTerm ? S_OK : E_INVALIDARG;
+    if (SUCCEEDED(hr))
+    {
+        CoTaskMemFree(m_searchTerm);
+        hr = SHStrDup(searchTerm, &m_searchTerm);
+    }
+    return hr;
+}
+
+IFACEMETHODIMP CSmartRenameRegEx::get_replaceTerm(_Outptr_ PWSTR* replaceTerm)
+{
+    CSRWSharedAutoLock lock(&m_lock);
+    *replaceTerm = nullptr;
+    HRESULT hr = m_replaceTerm ? S_OK : E_FAIL;
+    if (SUCCEEDED(hr))
+    {
+        hr = SHStrDup(m_replaceTerm, replaceTerm);
+    }
+    return hr;
+}
+
+IFACEMETHODIMP CSmartRenameRegEx::put_replaceTerm(_In_ PCWSTR replaceTerm)
+{
+    CSRWExclusiveAutoLock lock(&m_lock);
+    HRESULT hr = replaceTerm ? S_OK : E_INVALIDARG;
+    if (SUCCEEDED(hr))
+    {
+        CoTaskMemFree(m_replaceTerm);
+        hr = SHStrDup(replaceTerm, &m_replaceTerm);
+    }
+    return hr;
+}
+
+IFACEMETHODIMP CSmartRenameRegEx::get_flags(_Out_ DWORD* flags)
+{
+    *flags = m_flags;
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameRegEx::put_flags(_In_ DWORD flags)
+{
+    if (m_flags != flags)
+    {
+        m_flags = flags;
+    }
+    return S_OK;
+}
+
+HRESULT CSmartRenameRegEx::s_CreateInstance(_Outptr_ ISmartRenameRegEx** renameRegEx)
 {
     *renameRegEx = nullptr;
 
@@ -51,22 +153,61 @@ CSmartRenameRegEx::CSmartRenameRegEx() :
 
 CSmartRenameRegEx::~CSmartRenameRegEx()
 {
+    CoTaskMemFree(m_searchTerm);
+    CoTaskMemFree(m_replaceTerm);
 }
 
-HRESULT CSmartRenameRegEx::Replace(_In_ PCWSTR source, _In_ PCWSTR match, _In_ PCWSTR replace, _Outptr_ PWSTR *result)
+HRESULT CSmartRenameRegEx::Replace(_In_ PCWSTR source, _Outptr_ PWSTR* result)
 {
     *result = nullptr;
-    HRESULT hr = (source && wcslen(source) > 0 && match && wcslen(match) > 0) ? S_OK : E_INVALIDARG;
+    HRESULT hr = (source && wcslen(source) > 0 && m_searchTerm && wcslen(m_searchTerm) > 0) ? S_OK : E_INVALIDARG;
     if (SUCCEEDED(hr))
     {
         // TODO: optimize so we aren't having to convert to wstring all the time
         // TODO: also be sure we handle exceptions here
-        wstring src = wstring(source);
-        wstring rep = wstring(replace);
-        wstring res = regex_replace(src, wregex(wstring(match)), rep);
+        wstring res = regex_replace(wstring(source), wregex(wstring(m_searchTerm)), wstring(m_replaceTerm));
 
         *result = StrDup(res.c_str());
         hr = (*result) ? S_OK : E_OUTOFMEMORY;
     }
     return hr;
+}
+
+void CSmartRenameRegEx::_OnSearchTermChanged()
+{
+    CSRWExclusiveAutoLock lock(&m_lockEvents);
+
+    for (std::vector<SMART_RENAME_REGEX_EVENT>::iterator it = m_smartRenameRegExEvents.begin(); it != m_smartRenameRegExEvents.end(); ++it)
+    {
+        if (it->pEvents)
+        {
+            it->pEvents->OnSearchTermChanged(m_searchTerm);
+        }
+    }
+}
+
+void CSmartRenameRegEx::_OnReplaceTermChanged()
+{
+    CSRWExclusiveAutoLock lock(&m_lockEvents);
+
+    for (std::vector<SMART_RENAME_REGEX_EVENT>::iterator it = m_smartRenameRegExEvents.begin(); it != m_smartRenameRegExEvents.end(); ++it)
+    {
+        if (it->pEvents)
+        {
+            it->pEvents->OnReplaceTermChanged(m_replaceTerm);
+        }
+    }
+}
+
+void CSmartRenameRegEx::_OnFlagsChanged()
+{
+    CSRWExclusiveAutoLock lock(&m_lockEvents);
+
+    for (std::vector<SMART_RENAME_REGEX_EVENT>::iterator it = m_smartRenameRegExEvents.begin(); it != m_smartRenameRegExEvents.end(); ++it)
+    {
+        if (it->pEvents)
+        {
+            it->pEvents->OnFlagsChanged(m_flags);
+        }
+    }
 }
