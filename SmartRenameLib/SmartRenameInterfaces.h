@@ -1,6 +1,39 @@
 #pragma once
 #include "stdafx.h"
 
+enum SmartRenameFlags
+{
+    CaseSensitive = 0x1,
+    MatchAllOccurences = 0x2,
+    UseRegularExpressions = 0x4,
+    EnumerateItems = 0x8,
+    ExcludeFiles = 0x10,
+    ExcludeFolders = 0x20,
+    ExcludeSubfolders = 0x40
+};
+
+interface __declspec(uuid("3ECBA62B-E0F0-4472-AA2E-DEE7A1AA46B9")) ISmartRenameRegExEvents : public IUnknown
+{
+public:
+    IFACEMETHOD(OnSearchTermChanged)(_In_ PCWSTR searchTerm) = 0;
+    IFACEMETHOD(OnReplaceTermChanged)(_In_ PCWSTR replaceTerm) = 0;
+    IFACEMETHOD(OnFlagsChanged)(_In_ DWORD flags) = 0;
+};
+
+interface __declspec(uuid("E3ED45B5-9CE0-47E2-A595-67EB950B9B72")) ISmartRenameRegEx : public IUnknown
+{
+public:
+    IFACEMETHOD(Advise)(_In_ ISmartRenameRegExEvents* regExEvents, _Out_ DWORD* cookie) = 0;
+    IFACEMETHOD(UnAdvise)(_In_ DWORD cookie) = 0;
+    IFACEMETHOD(get_searchTerm)(_Outptr_ PWSTR* searchTerm) = 0;
+    IFACEMETHOD(put_searchTerm)(_In_ PCWSTR searchTerm) = 0;
+    IFACEMETHOD(get_replaceTerm)(_Outptr_ PWSTR* replaceTerm) = 0;
+    IFACEMETHOD(put_replaceTerm)(_In_ PCWSTR replaceTerm) = 0;
+    IFACEMETHOD(get_flags)(_Out_ DWORD* flags) = 0;
+    IFACEMETHOD(put_flags)(_In_ DWORD flags) = 0;
+    IFACEMETHOD(Replace)(_In_ PCWSTR source, _Outptr_ PWSTR* result) = 0;
+};
+
 interface __declspec(uuid("C7F59201-4DE1-4855-A3A2-26FC3279C8A5")) ISmartRenameItem : public IUnknown
 {
 public:
@@ -10,6 +43,8 @@ public:
     IFACEMETHOD(get_newName)(_Outptr_ PWSTR* newName) = 0;
     IFACEMETHOD(put_newName)(_In_ PCWSTR newName) = 0;
     IFACEMETHOD(get_isFolder)(_Out_ bool* isFolder) = 0;
+    IFACEMETHOD(get_isSubFolderContent)(_Out_ bool* isSubFolderContent) = 0;
+    IFACEMETHOD(put_isSubFolderContent)(_In_ bool isSubFolderContent) = 0;
     IFACEMETHOD(get_isDirty)(_Out_ bool* isDirty) = 0;
     IFACEMETHOD(get_shouldRename)(_Out_ bool* shouldRename) = 0;
     IFACEMETHOD(put_shouldRename)(_In_ bool shouldRename) = 0;
@@ -48,9 +83,9 @@ public:
     IFACEMETHOD(AddItem)(_In_ ISmartRenameItem* pItem) = 0;
     IFACEMETHOD(GetItem)(_In_ UINT index, _COM_Outptr_ ISmartRenameItem** ppItem) = 0;
     IFACEMETHOD(GetItemCount)(_Out_ UINT* count) = 0;
-    IFACEMETHOD(get_smartRenameRegEx)(_COM_Outptr_ ISmartRenameItem** ppRegEx);
-    IFACEMETHOD(put_smartRenameRegEx)(_COM_Outptr_ ISmartRenameItem* pRegEx);
-    IFACEMETHOD(get_smartRenameItemFactory)(_In_ ISmartRenameItemFactory** ppItemFactory) = 0;
+    IFACEMETHOD(get_smartRenameRegEx)(_COM_Outptr_ ISmartRenameRegEx** ppRegEx);
+    IFACEMETHOD(put_smartRenameRegEx)(_In_ ISmartRenameRegEx* pRegEx);
+    IFACEMETHOD(get_smartRenameItemFactory)(_COM_Outptr_ ISmartRenameItemFactory** ppItemFactory) = 0;
     IFACEMETHOD(put_smartRenameItemFactory)(_In_ ISmartRenameItemFactory* pItemFactory) = 0;
 };
 
@@ -62,31 +97,3 @@ public:
     IFACEMETHOD(Update)() = 0;
 };
 
-enum SmartRenameRegExFlags
-{
-    CaseSensitive = 0x1,
-    MatchAllOccurences = 0x2,
-    UseRegularExpressions = 0x4
-};
-
-interface __declspec(uuid("3ECBA62B-E0F0-4472-AA2E-DEE7A1AA46B9")) ISmartRenameRegExEvents : public IUnknown
-{
-public:
-    IFACEMETHOD(OnSearchTermChanged)(_In_ PCWSTR searchTerm) = 0;
-    IFACEMETHOD(OnReplaceTermChanged)(_In_ PCWSTR replaceTerm) = 0;
-    IFACEMETHOD(OnFlagsChanged)(_In_ DWORD flags) = 0;
-};
-
-interface __declspec(uuid("E3ED45B5-9CE0-47E2-A595-67EB950B9B72")) ISmartRenameRegEx : public IUnknown
-{
-public:
-    IFACEMETHOD(Advise)(_In_ ISmartRenameRegExEvents* regExEvents, _Out_ DWORD* cookie) = 0;
-    IFACEMETHOD(UnAdvise)(_In_ DWORD cookie) = 0;
-    IFACEMETHOD(get_searchTerm)(_Outptr_ PWSTR* searchTerm) = 0;
-    IFACEMETHOD(put_searchTerm)(_In_ PCWSTR searchTerm) = 0;
-    IFACEMETHOD(get_replaceTerm)(_Outptr_ PWSTR* replaceTerm) = 0;
-    IFACEMETHOD(put_replaceTerm)(_In_ PCWSTR replaceTerm) = 0;
-    IFACEMETHOD(get_flags)(_Out_ DWORD* flags) = 0;
-    IFACEMETHOD(put_flags)(_In_ DWORD flags) = 0;
-    IFACEMETHOD(Replace)(_In_ PCWSTR source, _Outptr_ PWSTR* result) = 0;
-};

@@ -29,6 +29,7 @@ IFACEMETHODIMP CSmartRenameItem::QueryInterface(_In_ REFIID riid, _Outptr_ void*
 
 IFACEMETHODIMP CSmartRenameItem::get_path(_Outptr_ PWSTR* path)
 {
+    CSRWSharedAutoLock lock(&m_lock);
     HRESULT hr = m_fullPath ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
     {
@@ -40,6 +41,7 @@ IFACEMETHODIMP CSmartRenameItem::get_path(_Outptr_ PWSTR* path)
 
 IFACEMETHODIMP CSmartRenameItem::put_path(_In_ PCWSTR path)
 {
+    CSRWSharedAutoLock lock(&m_lock);
     HRESULT hr = (path && wcslen(path) > 0) ? S_OK : E_INVALIDARG;
     if (SUCCEEDED(hr))
     {
@@ -56,6 +58,7 @@ IFACEMETHODIMP CSmartRenameItem::put_path(_In_ PCWSTR path)
 
 IFACEMETHODIMP CSmartRenameItem::get_originalName(_Outptr_ PWSTR* originalName)
 {
+    CSRWSharedAutoLock lock(&m_lock);
     HRESULT hr = m_originalName ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
     {
@@ -67,6 +70,7 @@ IFACEMETHODIMP CSmartRenameItem::get_originalName(_Outptr_ PWSTR* originalName)
 
 IFACEMETHODIMP CSmartRenameItem::put_newName(_In_ PCWSTR newName)
 {
+    CSRWSharedAutoLock lock(&m_lock);
     CoTaskMemFree(m_newName);
     m_newName = StrDup(newName);
     return m_newName ? S_OK : E_OUTOFMEMORY;
@@ -74,6 +78,7 @@ IFACEMETHODIMP CSmartRenameItem::put_newName(_In_ PCWSTR newName)
 
 IFACEMETHODIMP CSmartRenameItem::get_newName(_Outptr_ PWSTR* newName)
 {
+    CSRWSharedAutoLock lock(&m_lock);
     HRESULT hr = m_newName ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
     {
@@ -85,35 +90,55 @@ IFACEMETHODIMP CSmartRenameItem::get_newName(_Outptr_ PWSTR* newName)
 
 IFACEMETHODIMP CSmartRenameItem::get_isFolder(_Out_ bool* isFolder)
 {
+    CSRWSharedAutoLock lock(&m_lock);
     *isFolder = m_isFolder;
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameItem::get_isSubFolderContent(_Out_ bool* isSubFolderContent)
+{
+    CSRWSharedAutoLock lock(&m_lock);
+    *isSubFolderContent = m_isSubFolderContent;
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameItem::put_isSubFolderContent(_In_ bool isSubFolderContent)
+{
+    CSRWSharedAutoLock lock(&m_lock);
+    m_isSubFolderContent = isSubFolderContent;
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameItem::get_isDirty(_Out_ bool* isDirty)
 {
+    CSRWSharedAutoLock lock(&m_lock);
     *isDirty = m_isDirty;
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameItem::get_shouldRename(_Out_ bool* shouldRename)
 {
+    CSRWSharedAutoLock lock(&m_lock);
     *shouldRename = m_shouldRename;
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameItem::put_shouldRename(_In_ bool shouldRename)
 {
+    CSRWSharedAutoLock lock(&m_lock);
     m_shouldRename = shouldRename;
     return S_OK;
 }
 IFACEMETHODIMP CSmartRenameItem::get_id(_Out_ int* id)
 {
+    CSRWSharedAutoLock lock(&m_lock);
     *id = m_id;
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameItem::Reset()
 {
+    CSRWSharedAutoLock lock(&m_lock);
     CoTaskMemFree(m_newName);
     m_newName = nullptr;
     m_isDirty = false;

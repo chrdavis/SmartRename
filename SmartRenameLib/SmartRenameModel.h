@@ -25,8 +25,8 @@ public:
     IFACEMETHODIMP GetItem(_In_ UINT index, _COM_Outptr_ ISmartRenameItem** ppItem);
     IFACEMETHODIMP GetItemCount(_Out_ UINT* count);
     IFACEMETHODIMP get_smartRenameRegEx(_COM_Outptr_ ISmartRenameRegEx** ppRegEx);
-    IFACEMETHODIMP put_smartRenameRegEx(_COM_Outptr_ ISmartRenameRegEx* pRegEx);
-    IFACEMETHODIMP get_smartRenameItemFactory(_In_ ISmartRenameItemFactory** ppItemFactory);
+    IFACEMETHODIMP put_smartRenameRegEx(_In_ ISmartRenameRegEx* pRegEx);
+    IFACEMETHODIMP get_smartRenameItemFactory(_COM_Outptr_ ISmartRenameItemFactory** ppItemFactory);
     IFACEMETHODIMP put_smartRenameItemFactory(_In_ ISmartRenameItemFactory* pItemFactory);
 
     // ISmartRenameRegExEvents
@@ -51,14 +51,24 @@ private:
     void _OnRenameStarted();
     void _OnRenameCompleted();
 
-    // Thread proc for performing the regex rename of each item
-    static DWORD WINAPI s_regexWorkerThread(_In_ void* pvoid);
-    // Thread proc for performing the actual file operation that does the file rename
-    static DWORD WINAPI s_fileOpWorkerThread(_In_ void* pvoid);
+    HRESULT _PerformRegExRename();
+    HRESULT _PerformFileOperation();
 
+    HRESULT _CreateRegExWorkerThread();
+    HRESULT _CreateFileOpWorkerThread();
+
+    // Thread proc for performing the regex rename of each item
+    static DWORD WINAPI s_regexWorkerThread(_In_ void* pv);
+    // Thread proc for performing the actual file operation that does the file rename
+    static DWORD WINAPI s_fileOpWorkerThread(_In_ void* pv);
+
+    static bool _ShouldRenameItem(_In_ ISmartRenameItem* item, _In_ DWORD flags);
+
+    HANDLE m_regExWorkerThreadHandle = nullptr;
     HANDLE m_startRegExWorkerEvent = nullptr;
     HANDLE m_cancelRegExWorkerEvent = nullptr;
 
+    HANDLE m_fileOpWorkerThreadHandle = nullptr;
     HANDLE m_startFileOpWorkerEvent = nullptr;
 
     CSRWLock m_lockEvents;

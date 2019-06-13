@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.h"
 #include "SmartRenameInterfaces.h"
+#include "srwlock.h"
 
 class CSmartRenameItem :
     public ISmartRenameItem,
@@ -19,6 +20,8 @@ public:
     IFACEMETHODIMP put_newName(_In_ PCWSTR newName);
     IFACEMETHODIMP get_newName(_Outptr_ PWSTR* newName);
     IFACEMETHODIMP get_isFolder(_Out_ bool* isFolder);
+    IFACEMETHODIMP get_isSubFolderContent(_Out_ bool* isSubFolderContent);
+    IFACEMETHODIMP put_isSubFolderContent(_In_ bool isSubFolderContent);
     IFACEMETHODIMP get_isDirty(_Out_ bool* isDirty);
     IFACEMETHODIMP get_shouldRename(_Out_ bool* shouldRename);
     IFACEMETHODIMP put_shouldRename(_In_ bool shouldRename);
@@ -38,24 +41,20 @@ private:
     CSmartRenameItem();
     ~CSmartRenameItem();
 
-    HRESULT _OnItemAdded(_In_ UINT index);
-    HRESULT _OnItemProcessed(_In_ UINT index);
-    HRESULT _OnProgress(_In_ UINT completed, _In_ UINT total);
-    HRESULT _OnCanceled();
-    HRESULT _OnCompleted();
-
     void    _SetId(_In_ int id);
     void    _SetIsFolder(_In_ bool isFolder);
     HRESULT _GetOriginalNameFromFullPath();
 
 private:
-    bool    m_isDirty = false;
-    bool    m_isFolder = false;
-    bool    m_shouldRename = true;
-    int     m_id = -1;
-    HRESULT m_error = S_OK;
-    PWSTR   m_originalName = nullptr;
-    PWSTR   m_fullPath = nullptr;
-    PWSTR   m_newName = nullptr;
-    long    m_refCount = 0;
+    bool     m_isDirty = false;
+    bool     m_isFolder = false;
+    bool     m_isSubFolderContent = false;
+    bool     m_shouldRename = true;
+    int      m_id = -1;
+    HRESULT  m_error = S_OK;
+    PWSTR    m_originalName = nullptr;
+    PWSTR    m_fullPath = nullptr;
+    PWSTR    m_newName = nullptr;
+    CSRWLock m_lock;
+    long     m_refCount = 0;
 };

@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "SmartRenameModel.h"
+#include <shobjidl.h>
 
 IFACEMETHODIMP_(ULONG) CSmartRenameModel::AddRef()
 {
@@ -77,6 +78,8 @@ IFACEMETHODIMP CSmartRenameModel::Stop()
 
 IFACEMETHODIMP CSmartRenameModel::Reset()
 {
+    // Stop all threads and wait
+    // Reset all rename items
     return E_NOTIMPL;
 }
 
@@ -133,13 +136,13 @@ IFACEMETHODIMP CSmartRenameModel::get_smartRenameRegEx(_COM_Outptr_ ISmartRename
     return hr;
 }
 
-IFACEMETHODIMP CSmartRenameModel::put_smartRenameRegEx(_COM_Outptr_ ISmartRenameRegEx* pRegEx)
+IFACEMETHODIMP CSmartRenameModel::put_smartRenameRegEx(_In_ ISmartRenameRegEx* pRegEx)
 {
     m_spRegEx = pRegEx;
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameModel::get_smartRenameItemFactory(_In_ ISmartRenameItemFactory** ppItemFactory)
+IFACEMETHODIMP CSmartRenameModel::get_smartRenameItemFactory(_COM_Outptr_ ISmartRenameItemFactory** ppItemFactory)
 {
     HRESULT hr = E_FAIL;
     if (m_spItemFactory)
@@ -159,19 +162,19 @@ IFACEMETHODIMP CSmartRenameModel::put_smartRenameItemFactory(_In_ ISmartRenameIt
 
 IFACEMETHODIMP CSmartRenameModel::OnSearchTermChanged(_In_ PCWSTR /*searchTerm*/)
 {
-    // TODO: Cancel and restart rename preview thread
+    // TODO: Cancel and restart rename regex thread
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameModel::OnReplaceTermChanged(_In_ PCWSTR /*replaceTerm*/)
 {
-    // TODO: Cancel and restart rename preview thread
+    // TODO: Cancel and restart rename regex thread
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameModel::OnFlagsChanged(_In_ DWORD /*flags*/)
 {
-    // TODO: Cancel and restart rename preview thread
+    // TODO: Cancel and restart rename regex thread
     return S_OK;
 }
 
@@ -200,9 +203,297 @@ CSmartRenameModel::~CSmartRenameModel()
 {
 }
 
-DWORD WINAPI CSmartRenameModel::s_regexWorkerThread(void* pvoid)
+// Custom messages for worker threads
+enum
 {
-    (pvoid);
+    SRM_REGEX_ITEM_PROCESSED = (WM_APP + 1),  // Single smart rename item processed by regex worker thread
+    SRM_REGEX_CANCELED,                       // Regex operation was canceled
+    SRM_REGEX_COMPLETE,                       // Regex worker thread completed
+    SRM_FILEOP_COMPLETE                       // File Operation worker thread completed
+};
+
+struct WorkerThreadData
+{
+    DWORD modelThreadId;
+    HANDLE startEvent;
+    HANDLE cancelEvent;
+    CComPtr<ISmartRenameModel> spsrm;
+};
+
+HRESULT CSmartRenameModel::_PerformFileOperation()
+{
+    // Create worker thread which will perform the actual rename
+    HRESULT hr = _CreateFileOpWorkerThread();
+    if (SUCCEEDED(hr))
+    {
+        _OnRenameStarted();
+
+        // Signal the worker thread that they can start working. We needed to wait until we
+        // were ready to process thread messages.
+        SetEvent(m_startFileOpWorkerEvent);
+
+        while (true)
+        {
+            // Check if worker thread has exited
+            if (WaitForSingleObject(m_fileOpWorkerThreadHandle, 0) == WAIT_OBJECT_0)
+            {
+                break;
+            }
+
+            MSG msg;
+            while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+            {
+                if (msg.message == SRM_FILEOP_COMPLETE)
+                {
+                    // Worker thread completed
+                    break;
+                }
+                else
+                {
+                    TranslateMessage(&msg);
+                    DispatchMessage(&msg);
+                }
+            }
+        }
+
+        _OnRenameCompleted();
+    }
+
+    return 0;
+}
+
+HRESULT CSmartRenameModel::_CreateFileOpWorkerThread()
+{
+    WorkerThreadData* pwtd = new WorkerThreadData;
+    HRESULT hr = pwtd ? S_OK : E_OUTOFMEMORY;
+    if (SUCCEEDED(hr))
+    {
+        pwtd->modelThreadId = GetCurrentThreadId();
+        pwtd->startEvent = m_startRegExWorkerEvent;
+        pwtd->cancelEvent = nullptr;
+        pwtd->spsrm = this;
+        m_fileOpWorkerThreadHandle = CreateThread(nullptr, 0, s_fileOpWorkerThread, pwtd, 0, nullptr);
+        hr = (m_fileOpWorkerThreadHandle) ? S_OK : E_FAIL;
+        if (FAILED(hr))
+        {
+            delete pwtd;
+        }
+    }
+
+    return hr;
+}
+
+DWORD WINAPI CSmartRenameModel::s_fileOpWorkerThread(void* pv)
+{
+    if (SUCCEEDED(CoInitializeEx(NULL, 0)))
+    {
+        WorkerThreadData* pwtd = reinterpret_cast<WorkerThreadData*>(pv);
+        if (pwtd)
+        {
+            // Wait to be told we can begin
+            if (WaitForSingleObject(pwtd->startEvent, INFINITE) == WAIT_OBJECT_0)
+            {
+                CComPtr<ISmartRenameRegEx> spRenameRegEx;
+                if (SUCCEEDED(pwtd->spsrm->get_smartRenameRegEx(&spRenameRegEx)))
+                {
+                    // Create IFileOperation interface
+                    CComPtr<IFileOperation> spFileOp;
+                    if (SUCCEEDED(CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&spFileOp))))
+                    {
+                        DWORD flags = 0;
+                        spRenameRegEx->get_flags(&flags);
+
+                        UINT itemCount = 0;
+                        pwtd->spsrm->GetItemCount(&itemCount);
+                        // Add each rename operation
+                        for (UINT u = 0; u <= itemCount; u++)
+                        {
+                            CComPtr<ISmartRenameItem> spItem;
+                            if (SUCCEEDED(pwtd->spsrm->GetItem(u, &spItem)))
+                            {
+                                if (_ShouldRenameItem(spItem, flags))
+                                {
+                                    PWSTR path = nullptr;
+                                    if (SUCCEEDED(spItem->get_path(&path)))
+                                    {
+                                        // TODO: handle extensions and enumerating items
+                                        PWSTR newName = nullptr;
+                                        if (SUCCEEDED(spItem->get_newName(&newName)))
+                                        {
+                                            CComPtr<IShellItem> spShellItem;
+                                            if (SUCCEEDED(SHCreateItemFromParsingName(path, nullptr, IID_PPV_ARGS(&spShellItem))))
+                                            {
+                                                spFileOp->RenameItem(spShellItem, newName, nullptr);
+                                            }
+                                            CoTaskMemFree(newName);
+                                        }
+                                        CoTaskMemFree(path);
+                                    }
+                                }
+                                // Send the model thread the item processed message
+                                PostThreadMessage(pwtd->modelThreadId, SRM_REGEX_ITEM_PROCESSED, GetCurrentThreadId(), u);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Send the manager thread the completion message
+            PostThreadMessage(pwtd->modelThreadId, SRM_REGEX_COMPLETE, GetCurrentThreadId(), 0);
+
+            delete pwtd;
+        }
+        CoUninitialize();
+    }
+
+    return 0;
+}
+
+bool CSmartRenameModel::_ShouldRenameItem(_In_ ISmartRenameItem* item, _In_ DWORD flags)
+{
+    // Should we perform a rename on this item given its
+    // state and the options that were set?
+    bool isDirty = false;
+    bool shouldRename = false;
+    bool isFolder = false;
+    bool isSubFolderContent = false;
+    item->get_isDirty(&isDirty);
+    item->get_shouldRename(&shouldRename);
+    item->get_isFolder(&isFolder);
+    item->get_isSubFolderContent(&isSubFolderContent);
+    return (shouldRename && isDirty &&
+        (!(isFolder && (flags & SmartRenameFlags::ExcludeFolders))) &&
+        (!(!isFolder && (flags & SmartRenameFlags::ExcludeFiles))) &&
+        (!isSubFolderContent && (flags & SmartRenameFlags::ExcludeSubfolders)));
+}
+
+HRESULT CSmartRenameModel::_PerformRegExRename()
+{
+    // Create worker thread which will message us progress and completion.
+    HRESULT hr = _CreateRegExWorkerThread();
+    if (SUCCEEDED(hr))
+    {
+        ResetEvent(m_cancelRegExWorkerEvent);
+
+        _OnRegExStarted();
+
+        // Signal the worker thread that they can start working. We needed to wait until we
+        // were ready to process thread messages.
+        SetEvent(m_startRegExWorkerEvent);
+
+        while (true)
+        {
+            // Check if worker thread has exited
+            if (WaitForSingleObject(m_regExWorkerThreadHandle, 0) == WAIT_OBJECT_0)
+            {
+                break;
+            }
+
+            MSG msg;
+            while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+            {
+                if (msg.message == SRM_REGEX_ITEM_PROCESSED)
+                {
+                }
+                else if (msg.message == SRM_REGEX_CANCELED)
+                {
+                    _OnRegExCanceled();
+                }
+                else if (msg.message == SRM_REGEX_COMPLETE)
+                {
+                    // Worker thread completed
+                    break;
+                }
+                else
+                {
+                    TranslateMessage(&msg);
+                    DispatchMessage(&msg);
+                }
+            }
+        }
+
+        _OnRegExCompleted();
+    }
+
+    return 0;
+}
+
+HRESULT CSmartRenameModel::_CreateRegExWorkerThread()
+{
+    WorkerThreadData* pwtd = new WorkerThreadData;
+    HRESULT hr = pwtd ? S_OK : E_OUTOFMEMORY;
+    if (SUCCEEDED(hr))
+    {
+        pwtd->modelThreadId = GetCurrentThreadId();
+        pwtd->startEvent = m_startRegExWorkerEvent;
+        pwtd->cancelEvent = m_cancelRegExWorkerEvent;
+        pwtd->spsrm = this;
+        m_regExWorkerThreadHandle = CreateThread(nullptr, 0, s_regexWorkerThread, pwtd, 0, nullptr);
+        hr = (m_regExWorkerThreadHandle) ? S_OK : E_FAIL;
+        if (FAILED(hr))
+        {
+            delete pwtd;
+        }
+    }
+
+    return hr;
+}
+
+DWORD WINAPI CSmartRenameModel::s_regexWorkerThread(void* pv)
+{
+    if (SUCCEEDED(CoInitializeEx(NULL, 0)))
+    {
+        WorkerThreadData* pwtd = reinterpret_cast<WorkerThreadData*>(pv);
+        if (pwtd)
+        {
+            // Wait to be told we can begin
+            if (WaitForSingleObject(pwtd->startEvent, INFINITE) == WAIT_OBJECT_0)
+            {
+                CComPtr<ISmartRenameRegEx> spRenameRegEx;
+                if (SUCCEEDED(pwtd->spsrm->get_smartRenameRegEx(&spRenameRegEx)))
+                {
+                    UINT itemCount = 0;
+                    pwtd->spsrm->GetItemCount(&itemCount);
+                    for (UINT u = 0; u <= itemCount; u++)
+                    {
+                        // Check if cancel event is signaled
+                        if (WaitForSingleObject(pwtd->cancelEvent, 0) == WAIT_OBJECT_0)
+                        {
+                            // Canceled from model
+                            // Send the model thread the canceled message
+                            PostThreadMessage(pwtd->modelThreadId, SRM_REGEX_CANCELED, GetCurrentThreadId(), 0);
+                            break;
+                        }
+
+                        CComPtr<ISmartRenameItem> spItem;
+                        if (SUCCEEDED(pwtd->spsrm->GetItem(u, &spItem)))
+                        {
+                            PWSTR originalName = nullptr;
+                            if (SUCCEEDED(spItem->get_originalName(&originalName)))
+                            {
+                                PWSTR newName = nullptr;
+                                if (SUCCEEDED(spRenameRegEx->Replace(originalName, &newName)))
+                                {
+                                    spItem->put_newName(newName);
+                                    CoTaskMemFree(newName);
+                                }
+                                CoTaskMemFree(originalName);
+                            }
+                            // Send the model thread the item processed message
+                            PostThreadMessage(pwtd->modelThreadId, SRM_REGEX_ITEM_PROCESSED, GetCurrentThreadId(), u);
+                        }
+                    }
+                }
+            }
+
+            // Send the manager thread the completion message
+            PostThreadMessage(pwtd->modelThreadId, SRM_REGEX_COMPLETE, GetCurrentThreadId(), 0);
+
+            delete pwtd;
+        }
+        CoUninitialize();
+    }
+
     return 0;
 }
 
