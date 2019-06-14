@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.645
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SmartRenameUI", "SmartRename\SmartRename.vcxproj", "{0E072714-D127-460B-AFAD-B4C40B412798}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -10,7 +10,13 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SmartRenameUI", "SmartRenam
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SmartRenameLib", "SmartRenameLib\SmartRenameLib.vcxproj", "{51920F1F-C28C-4ADF-8660-4238766796C2}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SmartRenameLibUnitTests", "SmartRenameLibUnitTests\SmartRenameLibUnitTests.vcxproj", "{2151F984-E006-4A9F-92EF-C6DDE3DC8413}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SmartRenameUnitTests", "SmartRenameLibUnitTests\SmartRenameLibUnitTests.vcxproj", "{2151F984-E006-4A9F-92EF-C6DDE3DC8413}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0E072714-D127-460B-AFAD-B4C40B412798} = {0E072714-D127-460B-AFAD-B4C40B412798}
+		{51920F1F-C28C-4ADF-8660-4238766796C2} = {51920F1F-C28C-4ADF-8660-4238766796C2}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SmartRenameExt", "SmartRenameExt\SmartRenameExt.vcxproj", "{B25AC7A5-FB9F-4789-B392-D5C85E948670}"
 	ProjectSection(ProjectDependencies) = postProject
 		{0E072714-D127-460B-AFAD-B4C40B412798} = {0E072714-D127-460B-AFAD-B4C40B412798}
 		{51920F1F-C28C-4ADF-8660-4238766796C2} = {51920F1F-C28C-4ADF-8660-4238766796C2}
@@ -48,8 +54,19 @@ Global
 		{2151F984-E006-4A9F-92EF-C6DDE3DC8413}.Release|x64.Build.0 = Release|x64
 		{2151F984-E006-4A9F-92EF-C6DDE3DC8413}.Release|x86.ActiveCfg = Release|Win32
 		{2151F984-E006-4A9F-92EF-C6DDE3DC8413}.Release|x86.Build.0 = Release|Win32
+		{B25AC7A5-FB9F-4789-B392-D5C85E948670}.Debug|x64.ActiveCfg = Debug|x64
+		{B25AC7A5-FB9F-4789-B392-D5C85E948670}.Debug|x64.Build.0 = Debug|x64
+		{B25AC7A5-FB9F-4789-B392-D5C85E948670}.Debug|x86.ActiveCfg = Debug|Win32
+		{B25AC7A5-FB9F-4789-B392-D5C85E948670}.Debug|x86.Build.0 = Debug|Win32
+		{B25AC7A5-FB9F-4789-B392-D5C85E948670}.Release|x64.ActiveCfg = Release|x64
+		{B25AC7A5-FB9F-4789-B392-D5C85E948670}.Release|x64.Build.0 = Release|x64
+		{B25AC7A5-FB9F-4789-B392-D5C85E948670}.Release|x86.ActiveCfg = Release|Win32
+		{B25AC7A5-FB9F-4789-B392-D5C85E948670}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3AEE4420-DAC9-41CE-BEEB-962181D17814}
 	EndGlobalSection
 EndGlobal

@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 #include "SmartRenameInterfaces.h"
 #include <vector>
 #include "srwlock.h"
@@ -34,7 +33,7 @@ public:
     IFACEMETHODIMP OnReplaceTermChanged(_In_ PCWSTR replaceTerm);
     IFACEMETHODIMP OnFlagsChanged(_In_ DWORD flags);
 
-    static HRESULT s_CreateInstance(_COM_Outptr_ ISmartRenameModel** pprm);
+    static HRESULT s_CreateInstance(_COM_Outptr_ ISmartRenameModel** ppsrm);
 
 private:
     CSmartRenameModel();

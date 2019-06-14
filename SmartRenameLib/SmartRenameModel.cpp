@@ -126,6 +126,7 @@ IFACEMETHODIMP CSmartRenameModel::GetItemCount(_Out_ UINT* count)
 
 IFACEMETHODIMP CSmartRenameModel::get_smartRenameRegEx(_COM_Outptr_ ISmartRenameRegEx** ppRegEx)
 {
+    *ppRegEx = nullptr;
     HRESULT hr = E_FAIL;
     if (m_spRegEx)
     {
@@ -144,6 +145,7 @@ IFACEMETHODIMP CSmartRenameModel::put_smartRenameRegEx(_In_ ISmartRenameRegEx* p
 
 IFACEMETHODIMP CSmartRenameModel::get_smartRenameItemFactory(_COM_Outptr_ ISmartRenameItemFactory** ppItemFactory)
 {
+    *ppItemFactory = nullptr;
     HRESULT hr = E_FAIL;
     if (m_spItemFactory)
     {
@@ -178,15 +180,15 @@ IFACEMETHODIMP CSmartRenameModel::OnFlagsChanged(_In_ DWORD /*flags*/)
     return S_OK;
 }
 
-HRESULT CSmartRenameModel::s_CreateInstance(_COM_Outptr_ ISmartRenameModel** pprm)
+HRESULT CSmartRenameModel::s_CreateInstance(_COM_Outptr_ ISmartRenameModel** ppsrm)
 {
-    *pprm = nullptr;
-    CSmartRenameModel *prm = new CSmartRenameModel();
-    HRESULT hr = prm ? S_OK : E_OUTOFMEMORY;
+    *ppsrm = nullptr;
+    CSmartRenameModel *psrm = new CSmartRenameModel();
+    HRESULT hr = psrm ? S_OK : E_OUTOFMEMORY;
     if (SUCCEEDED(hr))
     {
-        hr = prm->QueryInterface(IID_PPV_ARGS(pprm));
-        prm->Release();
+        hr = psrm->QueryInterface(IID_PPV_ARGS(ppsrm));
+        psrm->Release();
     }
     return hr;
 }

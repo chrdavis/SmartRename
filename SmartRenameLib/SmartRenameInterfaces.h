@@ -83,8 +83,8 @@ public:
     IFACEMETHOD(AddItem)(_In_ ISmartRenameItem* pItem) = 0;
     IFACEMETHOD(GetItem)(_In_ UINT index, _COM_Outptr_ ISmartRenameItem** ppItem) = 0;
     IFACEMETHOD(GetItemCount)(_Out_ UINT* count) = 0;
-    IFACEMETHOD(get_smartRenameRegEx)(_COM_Outptr_ ISmartRenameRegEx** ppRegEx);
-    IFACEMETHOD(put_smartRenameRegEx)(_In_ ISmartRenameRegEx* pRegEx);
+    IFACEMETHOD(get_smartRenameRegEx)(_COM_Outptr_ ISmartRenameRegEx** ppRegEx) = 0;
+    IFACEMETHOD(put_smartRenameRegEx)(_In_ ISmartRenameRegEx* pRegEx) = 0;
     IFACEMETHOD(get_smartRenameItemFactory)(_COM_Outptr_ ISmartRenameItemFactory** ppItemFactory) = 0;
     IFACEMETHOD(put_smartRenameItemFactory)(_In_ ISmartRenameItemFactory* pItemFactory) = 0;
 };
