@@ -5,6 +5,7 @@
 
 
 using namespace std;
+using std::regex_error;
 
 IFACEMETHODIMP_(ULONG) CSmartRenameRegEx::AddRef()
 {
@@ -178,12 +179,17 @@ HRESULT CSmartRenameRegEx::Replace(_In_ PCWSTR source, _Outptr_ PWSTR* result)
     HRESULT hr = (source && wcslen(source) > 0 && m_searchTerm && wcslen(m_searchTerm) > 0) ? S_OK : E_INVALIDARG;
     if (SUCCEEDED(hr))
     {
-        // TODO: optimize so we aren't having to convert to wstring all the time
-        // TODO: also be sure we handle exceptions here
-        wstring res = regex_replace(wstring(source), wregex(wstring(m_searchTerm)), wstring(m_replaceTerm));
-
-        *result = StrDup(res.c_str());
-        hr = (*result) ? S_OK : E_OUTOFMEMORY;
+        wstring res = source;
+        try
+        {
+            res = regex_replace(wstring(source), wregex(wstring(m_searchTerm)), m_replaceTerm ? wstring(m_replaceTerm) : wstring(L""));
+             *result = StrDup(res.c_str());
+            hr = (*result) ? S_OK : E_OUTOFMEMORY;
+        }
+        catch (regex_error e)
+        {
+            hr = E_FAIL;
+        }
     }
     return hr;
 }
