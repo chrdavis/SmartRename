@@ -17,5 +17,7 @@
 #include <memory.h>
 #include <wchar.h>
 #include <atlbase.h>
+#include <strsafe.h>
+#include <pathcch.h>
 
 // TODO: reference additional headers your program requires here

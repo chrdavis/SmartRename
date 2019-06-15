@@ -187,7 +187,11 @@ HRESULT CSmartRenameModel::s_CreateInstance(_COM_Outptr_ ISmartRenameModel** pps
     HRESULT hr = psrm ? S_OK : E_OUTOFMEMORY;
     if (SUCCEEDED(hr))
     {
-        hr = psrm->QueryInterface(IID_PPV_ARGS(ppsrm));
+        hr = psrm->_Init();
+        if (SUCCEEDED(hr))
+        {
+            hr = psrm->QueryInterface(IID_PPV_ARGS(ppsrm));
+        }
         psrm->Release();
     }
     return hr;
@@ -196,13 +200,20 @@ HRESULT CSmartRenameModel::s_CreateInstance(_COM_Outptr_ ISmartRenameModel** pps
 CSmartRenameModel::CSmartRenameModel() :
     m_refCount(1)
 {
-    m_startFileOpWorkerEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-    m_startRegExWorkerEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-    m_cancelRegExWorkerEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
 }
 
 CSmartRenameModel::~CSmartRenameModel()
 {
+}
+
+HRESULT CSmartRenameModel::_Init()
+{
+    // Guaranteed to succeed
+    m_startFileOpWorkerEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    m_startRegExWorkerEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    m_cancelRegExWorkerEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+   
+    return S_OK;
 }
 
 // Custom messages for worker threads
@@ -610,3 +621,127 @@ void CSmartRenameModel::_OnRenameCompleted()
     }
 }
 
+// Just in case setup a maximum folder depth
+#define MAX_ENUM_DEPTH 300
+
+bool CSmartRenameModel::_PathIsDotOrDotDot(_In_ PCWSTR path)
+{
+    return ((path[0] == L'.') && ((path[1] == L'\0') || ((path[1] == L'.') && (path[2] == L'\0'))));
+}
+
+bool CSmartRenameModel::_EnumeratePath(_In_ PCWSTR path, _In_ UINT depth)
+{
+    bool ret = false;
+    if (depth < MAX_ENUM_DEPTH)
+    {
+        wchar_t searchPath[MAX_PATH] = { 0 };
+        wchar_t parent[MAX_PATH] = { 0 };
+
+        StringCchCopy(searchPath, ARRAYSIZE(searchPath), path);
+        StringCchCopy(parent, ARRAYSIZE(parent), path);
+
+        if (PathIsDirectory(searchPath))
+        {
+            // Add wildcard to end of folder path so we can enumerate its contents
+            PathCchAddBackslash(searchPath, ARRAYSIZE(searchPath));
+            StringCchCat(searchPath, ARRAYSIZE(searchPath), L"*");
+        }
+        else
+        {
+            PathCchRemoveFileSpec(parent, ARRAYSIZE(parent));
+        }
+
+        // TODO: Read from flags
+        bool enumSubFolders = false;
+
+        WIN32_FIND_DATA findData = { 0 };
+        HANDLE findHandle = FindFirstFile(searchPath, &findData);
+        if (findHandle != INVALID_HANDLE_VALUE)
+        {
+            do
+            {
+                if ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY)
+                {
+                    // Ensure the directory is not . or ..
+                    if (enumSubFolders && !_PathIsDotOrDotDot(findData.cFileName))
+                    {
+                        wchar_t pathSubFolder[MAX_PATH] = { 0 };
+                        if (SUCCEEDED(PathCchCombine(pathSubFolder, ARRAYSIZE(pathSubFolder), parent, findData.cFileName)))
+                        {
+                            PathCchAddBackslash(pathSubFolder, ARRAYSIZE(pathSubFolder));
+                            ret = _EnumeratePath(pathSubFolder, ++depth) || ret;
+                        }
+                    }
+                }
+                else
+                {
+                    wchar_t pathFile[MAX_PATH] = { 0 };
+                    if (SUCCEEDED(PathCchCombine(pathFile, ARRAYSIZE(pathFile), parent, findData.cFileName)))
+                    {
+                        // Use the ISmartRenameItemFactory to create a new ISmartRenameItem
+                        CComPtr<ISmartRenameItem> spsriNew;
+                        if (SUCCEEDED(m_spItemFactory->Create(&spsriNew)))
+                        {
+                            if (SUCCEEDED(spsriNew->put_path(pathFile)))
+                            {
+                                // Add the item to the model
+                                ret = SUCCEEDED(AddItem(spsriNew)) || ret;
+                            }
+                        }
+                    }
+                }
+            } while (FindNextFile(findHandle, &findData));
+
+            FindClose(findHandle);
+        }
+    }
+
+    return ret;
+}
+
+void CSmartRenameModel::_ClearEventHandlers()
+{
+    CSRWExclusiveAutoLock lock(&m_lockEvents);
+
+    // Cleanup event handlers
+    for (std::vector<SMART_RENAME_MODEL_EVENT>::iterator it = m_smartRenameModelEvents.begin(); it != m_smartRenameModelEvents.end(); ++it)
+    {
+        it->cookie = 0;
+        if (it->pEvents)
+        {
+            it->pEvents->Release();
+            it->pEvents = nullptr;
+        }
+    }
+
+    m_smartRenameModelEvents.clear();
+}
+
+void CSmartRenameModel::_ClearSmartRenameItems()
+{
+    CSRWExclusiveAutoLock lock(&m_lockItems);
+
+    // Cleanup smart rename items
+    for (std::vector<ISmartRenameItem*>::iterator it = m_smartRenameItems.begin(); it != m_smartRenameItems.end(); ++it)
+    {
+        ISmartRenameItem* pItem = *it;
+        pItem->Release();
+    }
+
+    m_smartRenameItems.clear();
+}
+
+void CSmartRenameModel::_Cleanup()
+{
+    CloseHandle(m_startFileOpWorkerEvent);
+    m_startFileOpWorkerEvent = nullptr;
+
+    CloseHandle(m_startRegExWorkerEvent);
+    m_startRegExWorkerEvent = nullptr;
+
+    CloseHandle(m_cancelRegExWorkerEvent);
+    m_cancelRegExWorkerEvent = nullptr;
+
+    _ClearEventHandlers();
+    _ClearSmartRenameItems();
+}

@@ -39,6 +39,9 @@ private:
     CSmartRenameModel();
     ~CSmartRenameModel();
 
+    HRESULT _Init();
+    void _Cleanup();
+
     void _Cancel();
 
     void _OnItemAdded(_In_ ISmartRenameItem* renameItem);
@@ -49,6 +52,12 @@ private:
     void _OnRegExCompleted();
     void _OnRenameStarted();
     void _OnRenameCompleted();
+
+    void _ClearEventHandlers();
+    void _ClearSmartRenameItems();
+
+    bool _PathIsDotOrDotDot(_In_ PCWSTR path);
+    bool _EnumeratePath(_In_ PCWSTR path, _In_ UINT depth);
 
     HRESULT _PerformRegExRename();
     HRESULT _PerformFileOperation();
