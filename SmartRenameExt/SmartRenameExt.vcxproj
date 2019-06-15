@@ -71,16 +71,16 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <TargetExt>.dll</TargetExt>
-    <IncludePath>..\SmartRenameLib\;..\SmartRename\;$(IncludePath)</IncludePath>
+    <IncludePath>..\SmartRenameLib\;..\SmartRenameUI\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>..\SmartRenameLib\;..\SmartRename\;$(IncludePath)</IncludePath>
+    <IncludePath>..\SmartRenameLib\;..\SmartRenameUI\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>..\SmartRenameLib\;..\SmartRename\;$(IncludePath)</IncludePath>
+    <IncludePath>..\SmartRenameLib\;..\SmartRenameUI\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>..\SmartRenameLib\;..\SmartRename\;$(IncludePath)</IncludePath>
+    <IncludePath>..\SmartRenameLib\;..\SmartRenameUI\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

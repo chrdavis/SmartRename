@@ -4,11 +4,11 @@
 
 #include "stdafx.h"
 #include "resource.h"
-#include "SmartRename.h"
+#include "SmartRenameUI.h"
 
 extern HINSTANCE g_hInst;
 
-HRESULT CSmartRenameDlg::_DoModal(__in_opt HWND hwnd)
+HRESULT CSmartRenameUI::_DoModal(__in_opt HWND hwnd)
 {
     HRESULT hr = S_OK;
     INT_PTR ret = DialogBoxParam(g_hInst, MAKEINTRESOURCE(IDD_MAIN), hwnd, s_DlgProc, (LPARAM)this);
@@ -20,10 +20,10 @@ HRESULT CSmartRenameDlg::_DoModal(__in_opt HWND hwnd)
 }
 
 
-HRESULT CSmartRenameDlg::s_CreateInstance(_In_ ISmartRenameModel* psrm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameView** ppsrui)
+HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameModel* psrm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameView** ppsrui)
 {
     *ppsrui = nullptr;
-    CSmartRenameDlg *prui = new CSmartRenameDlg();
+    CSmartRenameUI *prui = new CSmartRenameUI();
     HRESULT hr = prui ? S_OK : E_OUTOFMEMORY;
     if (SUCCEEDED(hr))
     {
@@ -41,62 +41,62 @@ HRESULT CSmartRenameDlg::s_CreateInstance(_In_ ISmartRenameModel* psrm, _In_opt_
 
 // ISmartRenameView
 
-IFACEMETHODIMP CSmartRenameDlg::Show()
+IFACEMETHODIMP CSmartRenameUI::Show()
 {
     return _DoModal(NULL);
 }
 
-IFACEMETHODIMP CSmartRenameDlg::Close()
+IFACEMETHODIMP CSmartRenameUI::Close()
 {
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameDlg::Update()
+IFACEMETHODIMP CSmartRenameUI::Update()
 {
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameDlg::OnItemAdded(_In_ ISmartRenameItem*)
+IFACEMETHODIMP CSmartRenameUI::OnItemAdded(_In_ ISmartRenameItem*)
 {
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameDlg::OnUpdate(_In_ ISmartRenameItem*)
+IFACEMETHODIMP CSmartRenameUI::OnUpdate(_In_ ISmartRenameItem*)
 {
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameDlg::OnError(_In_ ISmartRenameItem*)
+IFACEMETHODIMP CSmartRenameUI::OnError(_In_ ISmartRenameItem*)
 {
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameDlg::OnRegExStarted()
+IFACEMETHODIMP CSmartRenameUI::OnRegExStarted()
 {
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameDlg::OnRegExCanceled()
+IFACEMETHODIMP CSmartRenameUI::OnRegExCanceled()
 {
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameDlg::OnRegExCompleted()
+IFACEMETHODIMP CSmartRenameUI::OnRegExCompleted()
 {
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameDlg::OnRenameStarted()
+IFACEMETHODIMP CSmartRenameUI::OnRenameStarted()
 {
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameDlg::OnRenameCompleted()
+IFACEMETHODIMP CSmartRenameUI::OnRenameCompleted()
 {
     return S_OK;
 }
 
-HRESULT CSmartRenameDlg::_Initialize(_In_ ISmartRenameModel* psrm, _In_opt_ IDataObject* pdo)
+HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameModel* psrm, _In_opt_ IDataObject* pdo)
 {
     // Cache the smart rename model
     m_spsrm = psrm;
@@ -117,7 +117,7 @@ HRESULT CSmartRenameDlg::_Initialize(_In_ ISmartRenameModel* psrm, _In_opt_ IDat
 
 // TODO: persist settings made in the UI
 
-HRESULT CSmartRenameDlg::_ReadSettings()
+HRESULT CSmartRenameUI::_ReadSettings()
 {
    /* HKEY hKey = NULL;
     HRESULT hr = HRESULT_FROM_WIN32(RegOpenKeyEx(HKEY_CURRENT_USER, REG_DD_SETTINGS_KEY, 0, KEY_READ, &hKey));
@@ -154,7 +154,7 @@ HRESULT CSmartRenameDlg::_ReadSettings()
     return S_OK;
 }
 
-HRESULT CSmartRenameDlg::_WriteSettings()
+HRESULT CSmartRenameUI::_WriteSettings()
 {
     /*HKEY hKey = NULL;
     HRESULT hr = HRESULT_FROM_WIN32(RegCreateKeyEx(HKEY_CURRENT_USER, REG_DD_SETTINGS_KEY, NULL, NULL, NULL,
@@ -179,7 +179,7 @@ HRESULT CSmartRenameDlg::_WriteSettings()
     return S_OK;
 }
 
-void CSmartRenameDlg::_OnClear()
+void CSmartRenameUI::_OnClear()
 {
     // Clear input fields, reset options to defaults and reinit the contents of the list view
     // Clear the contents of the edit boxes
@@ -189,7 +189,7 @@ void CSmartRenameDlg::_OnClear()
     //_ToggleContent(TRUE);
 }
 
-void CSmartRenameDlg::_OnInitDlg()
+void CSmartRenameUI::_OnInitDlg()
 {
     // Initialize from stored settings
     _ReadSettings();
@@ -213,30 +213,30 @@ void CSmartRenameDlg::_OnInitDlg()
     }*/
 }
 
-void CSmartRenameDlg::_OnCloseDlg()
+void CSmartRenameUI::_OnCloseDlg()
 {
     // Persist the current settings
     _WriteSettings();
     EndDialog(m_hwnd, 1);
 }
 
-void CSmartRenameDlg::_OnDestroyDlg()
+void CSmartRenameUI::_OnDestroyDlg()
 {
     // TODO: teardown
 }
 
-void CSmartRenameDlg::_OnRename()
+void CSmartRenameUI::_OnRename()
 {
     // TODO: 
 }
 
-/*void CSmartRenameDlg::_OnRunRenamePreview()
+/*void CSmartRenameUI::_OnRunRenamePreview()
 {
     // TODO: We should have a interface and event interface that wraps the search/replace/regex inputs and settings/options
     // TODO: That way the model could respond to changes set via the UI and it will run the rename preview on its own
 }*/
 
-INT_PTR CSmartRenameDlg::_DlgProc(UINT uMsg, WPARAM wParam, LPARAM)
+INT_PTR CSmartRenameUI::_DlgProc(UINT uMsg, WPARAM wParam, LPARAM)
 {
     INT_PTR bRet = TRUE;   // default for all handled cases in switch below
 

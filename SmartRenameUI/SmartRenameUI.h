@@ -1,12 +1,12 @@
 #pragma once
 #include <SmartRenameInterfaces.h>
 
-class CSmartRenameDlg :
+class CSmartRenameUI :
     public ISmartRenameView,
     public ISmartRenameModelEvents
 {
 public:
-    CSmartRenameDlg() :
+    CSmartRenameUI() :
         m_refCount(1)
     {
     }
@@ -16,8 +16,8 @@ public:
     {
         static const QITAB qit[] =
         {
-            QITABENT(CSmartRenameDlg, ISmartRenameView),
-            QITABENT(CSmartRenameDlg, ISmartRenameModelEvents),
+            QITABENT(CSmartRenameUI, ISmartRenameView),
+            QITABENT(CSmartRenameUI, ISmartRenameModelEvents),
             { 0 },
         };
         return QISearch(this, qit, riid, ppv);
@@ -56,7 +56,7 @@ public:
     static HRESULT s_CreateInstance(_In_ ISmartRenameModel* psrm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameView** ppsrui);
 
 private:
-    ~CSmartRenameDlg()
+    ~CSmartRenameUI()
     {
         DeleteObject(m_iconMain);
     }
@@ -65,10 +65,10 @@ private:
 
     static INT_PTR CALLBACK s_DlgProc(HWND hdlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
-        CSmartRenameDlg* pDlg = reinterpret_cast<CSmartRenameDlg*>(GetWindowLongPtr(hdlg, DWLP_USER));
+        CSmartRenameUI* pDlg = reinterpret_cast<CSmartRenameUI*>(GetWindowLongPtr(hdlg, DWLP_USER));
         if (uMsg == WM_INITDIALOG)
         {
-            pDlg = reinterpret_cast<CSmartRenameDlg*>(lParam);
+            pDlg = reinterpret_cast<CSmartRenameUI*>(lParam);
             pDlg->m_hwnd = hdlg;
             SetWindowLongPtr(hdlg, DWLP_USER, reinterpret_cast<LONG_PTR>(pDlg));
         }

@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "SmartRenameExt.h"
-#include <SmartRename.h>
+#include <SmartRenameUI.h>
 #include <SmartRenameModel.h>
 #include "resource.h"
 
@@ -130,7 +130,7 @@ DWORD WINAPI CSmartRenameMenu::s_SmartRenameUIThreadProc(_In_ void* pData)
         {
             // Create the smart rename UI instance and pass the smart rename model
             CComPtr<ISmartRenameView> spsrui;
-            if (SUCCEEDED(CSmartRenameDlg::s_CreateInstance(spsrm, spdo, &spsrui)))
+            if (SUCCEEDED(CSmartRenameUI::s_CreateInstance(spsrm, spdo, &spsrui)))
             {
                 // Call blocks until we are done
                 spsrui->Show();
