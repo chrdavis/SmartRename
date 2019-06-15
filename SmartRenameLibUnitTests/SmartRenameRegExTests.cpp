@@ -10,7 +10,6 @@ namespace SmartRenameRegExTests
     TEST_CLASS(SimpleTests)
     {
     public:
-        
         TEST_METHOD(GeneralReplaceTest)
         {
             CComPtr<ISmartRenameRegEx> renameRegEx;
