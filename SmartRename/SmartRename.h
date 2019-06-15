@@ -12,7 +12,7 @@ public:
     }
 
     // IUnknown
-    IFACEMETHODIMP QueryInterface(__in REFIID riid, __deref_out void **ppv)
+    IFACEMETHODIMP QueryInterface(__in REFIID riid, __deref_out void** ppv)
     {
         static const QITAB qit[] =
         {
@@ -53,7 +53,7 @@ public:
     IFACEMETHODIMP OnRenameStarted();
     IFACEMETHODIMP OnRenameCompleted();
 
-    static HRESULT s_CreateInstance(_In_ ISmartRenameModel* prm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameView** pprui);
+    static HRESULT s_CreateInstance(_In_ ISmartRenameModel* psrm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameView** ppsrui);
 
 private:
     ~CSmartRenameDlg()
@@ -65,10 +65,10 @@ private:
 
     static INT_PTR CALLBACK s_DlgProc(HWND hdlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
-        CSmartRenameDlg *pDlg = reinterpret_cast<CSmartRenameDlg *>(GetWindowLongPtr(hdlg, DWLP_USER));
+        CSmartRenameDlg* pDlg = reinterpret_cast<CSmartRenameDlg*>(GetWindowLongPtr(hdlg, DWLP_USER));
         if (uMsg == WM_INITDIALOG)
         {
-            pDlg = reinterpret_cast<CSmartRenameDlg *>(lParam);
+            pDlg = reinterpret_cast<CSmartRenameDlg*>(lParam);
             pDlg->m_hwnd = hdlg;
             SetWindowLongPtr(hdlg, DWLP_USER, reinterpret_cast<LONG_PTR>(pDlg));
         }

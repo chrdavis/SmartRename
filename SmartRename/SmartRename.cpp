@@ -20,18 +20,18 @@ HRESULT CSmartRenameDlg::_DoModal(__in_opt HWND hwnd)
 }
 
 
-HRESULT CSmartRenameDlg::s_CreateInstance(_In_ ISmartRenameModel* prm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameView** pprui)
+HRESULT CSmartRenameDlg::s_CreateInstance(_In_ ISmartRenameModel* psrm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameView** ppsrui)
 {
-    *pprui = nullptr;
+    *ppsrui = nullptr;
     CSmartRenameDlg *prui = new CSmartRenameDlg();
     HRESULT hr = prui ? S_OK : E_OUTOFMEMORY;
     if (SUCCEEDED(hr))
     {
         // Pass the ISmartRenameModel to the SmartRenameView so it can subscribe to events
-        hr = prui->_Initialize(prm, pdo);
+        hr = prui->_Initialize(psrm, pdo);
         if (SUCCEEDED(hr))
         {
-            hr = prui->QueryInterface(IID_PPV_ARGS(pprui));
+            hr = prui->QueryInterface(IID_PPV_ARGS(ppsrui));
         }
         prui->Release();
     }
@@ -274,22 +274,4 @@ INT_PTR CSmartRenameDlg::_DlgProc(UINT uMsg, WPARAM wParam, LPARAM)
         bRet = FALSE;
     }
     return bRet;
-}
-
-int WINAPI wWinMain(__in HINSTANCE hInstance, __in_opt HINSTANCE, __in PWSTR, __in int)
-{
-    g_hInst = hInstance;
-    HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-    if (SUCCEEDED(hr))
-    {
-        CSmartRenameDlg *pdlg = new CSmartRenameDlg();
-        if (pdlg)
-        {
-            pdlg->Show();
-            pdlg->Close();
-            pdlg->Release();
-        }
-        CoUninitialize();
-    }
-    return 0;
 }
