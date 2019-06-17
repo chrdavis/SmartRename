@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "SmartRenameExt.h"
 #include <SmartRenameUI.h>
-#include <SmartRenameModel.h>
+#include <SmartRenameManager.h>
 #include "resource.h"
 
 extern HINSTANCE g_hInst;
@@ -125,11 +125,11 @@ DWORD WINAPI CSmartRenameMenu::s_SmartRenameUIThreadProc(_In_ void* pData)
     if (SUCCEEDED(CoGetInterfaceAndReleaseStream(pstrm, IID_PPV_ARGS(&spdo))))
     {
         // Create the smart rename model
-        CComPtr<ISmartRenameModel> spsrm;
-        if (SUCCEEDED(CSmartRenameModel::s_CreateInstance(&spsrm)))
+        CComPtr<ISmartRenameManager> spsrm;
+        if (SUCCEEDED(CSmartRenameManager::s_CreateInstance(&spsrm)))
         {
             // Create the smart rename UI instance and pass the smart rename model
-            CComPtr<ISmartRenameView> spsrui;
+            CComPtr<ISmartRenameUI> spsrui;
             if (SUCCEEDED(CSmartRenameUI::s_CreateInstance(spsrm, spdo, &spsrui)))
             {
                 // Call blocks until we are done

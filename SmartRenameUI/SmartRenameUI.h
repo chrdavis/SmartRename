@@ -2,8 +2,8 @@
 #include <SmartRenameInterfaces.h>
 
 class CSmartRenameUI :
-    public ISmartRenameView,
-    public ISmartRenameModelEvents
+    public ISmartRenameUI,
+    public ISmartRenameManagerEvents
 {
 public:
     CSmartRenameUI() :
@@ -16,8 +16,8 @@ public:
     {
         static const QITAB qit[] =
         {
-            QITABENT(CSmartRenameUI, ISmartRenameView),
-            QITABENT(CSmartRenameUI, ISmartRenameModelEvents),
+            QITABENT(CSmartRenameUI, ISmartRenameUI),
+            QITABENT(CSmartRenameUI, ISmartRenameManagerEvents),
             { 0 },
         };
         return QISearch(this, qit, riid, ppv);
@@ -38,12 +38,12 @@ public:
         return refCount;
     }
 
-    // ISmartRenameView
+    // ISmartRenameUI
     IFACEMETHODIMP Show();
     IFACEMETHODIMP Close();
     IFACEMETHODIMP Update();
 
-    // ISmartRenameModelEvents
+    // ISmartRenameManagerEvents
     IFACEMETHODIMP OnItemAdded(_In_ ISmartRenameItem* renameItem);
     IFACEMETHODIMP OnUpdate(_In_ ISmartRenameItem* renameItem);
     IFACEMETHODIMP OnError(_In_ ISmartRenameItem* renameItem);
@@ -53,7 +53,7 @@ public:
     IFACEMETHODIMP OnRenameStarted();
     IFACEMETHODIMP OnRenameCompleted();
 
-    static HRESULT s_CreateInstance(_In_ ISmartRenameModel* psrm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameView** ppsrui);
+    static HRESULT s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameUI** ppsrui);
 
 private:
     ~CSmartRenameUI()
@@ -77,7 +77,7 @@ private:
 
     INT_PTR _DlgProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-    HRESULT _Initialize(_In_ ISmartRenameModel* psrm, _In_opt_ IDataObject* pdo);
+    HRESULT _Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo);
 
     void _OnInitDlg();
     void _OnRename();
@@ -92,6 +92,6 @@ private:
     HWND m_hwnd = nullptr;
     HICON m_iconMain = nullptr;
     DWORD m_cookie = 0;
-    CComPtr<ISmartRenameModel> m_spsrm;
+    CComPtr<ISmartRenameManager> m_spsrm;
     CComPtr<IDataObject> m_spdo;
 };

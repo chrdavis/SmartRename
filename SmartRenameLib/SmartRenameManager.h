@@ -3,8 +3,8 @@
 #include <vector>
 #include "srwlock.h"
 
-class CSmartRenameModel :
-    public ISmartRenameModel,
+class CSmartRenameManager :
+    public ISmartRenameManager,
     public ISmartRenameRegExEvents
 {
 public:
@@ -13,8 +13,8 @@ public:
     IFACEMETHODIMP_(ULONG) AddRef();
     IFACEMETHODIMP_(ULONG) Release();
 
-    // ISmartRenameModel
-    IFACEMETHODIMP Advise(_In_ ISmartRenameModelEvents* renameOpEvent, _Out_ DWORD *cookie);
+    // ISmartRenameManager
+    IFACEMETHODIMP Advise(_In_ ISmartRenameManagerEvents* renameOpEvent, _Out_ DWORD *cookie);
     IFACEMETHODIMP UnAdvise(_In_ DWORD cookie);
     IFACEMETHODIMP Start();
     IFACEMETHODIMP Stop();
@@ -33,11 +33,11 @@ public:
     IFACEMETHODIMP OnReplaceTermChanged(_In_ PCWSTR replaceTerm);
     IFACEMETHODIMP OnFlagsChanged(_In_ DWORD flags);
 
-    static HRESULT s_CreateInstance(_COM_Outptr_ ISmartRenameModel** ppsrm);
+    static HRESULT s_CreateInstance(_COM_Outptr_ ISmartRenameManager** ppsrm);
 
 private:
-    CSmartRenameModel();
-    ~CSmartRenameModel();
+    CSmartRenameManager();
+    ~CSmartRenameManager();
 
     HRESULT _Init();
     void _Cleanup();
@@ -86,14 +86,14 @@ private:
 
     struct SMART_RENAME_MODEL_EVENT
     {
-        ISmartRenameModelEvents* pEvents;
+        ISmartRenameManagerEvents* pEvents;
         DWORD cookie;
     };
 
     CComPtr<ISmartRenameItemFactory> m_spItemFactory;
     CComPtr<ISmartRenameRegEx> m_spRegEx;
 
-    _Guarded_by_(m_lockEvents) std::vector<SMART_RENAME_MODEL_EVENT> m_smartRenameModelEvents;
+    _Guarded_by_(m_lockEvents) std::vector<SMART_RENAME_MODEL_EVENT> m_SmartRenameManagerEvents;
     _Guarded_by_(m_lockItems) std::vector<ISmartRenameItem*> m_smartRenameItems;
 
     long m_refCount;

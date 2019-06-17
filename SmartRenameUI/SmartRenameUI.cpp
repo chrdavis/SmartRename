@@ -20,14 +20,14 @@ HRESULT CSmartRenameUI::_DoModal(__in_opt HWND hwnd)
 }
 
 
-HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameModel* psrm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameView** ppsrui)
+HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameUI** ppsrui)
 {
     *ppsrui = nullptr;
     CSmartRenameUI *prui = new CSmartRenameUI();
     HRESULT hr = prui ? S_OK : E_OUTOFMEMORY;
     if (SUCCEEDED(hr))
     {
-        // Pass the ISmartRenameModel to the SmartRenameView so it can subscribe to events
+        // Pass the ISmartRenameManager to the SmartRenameView so it can subscribe to events
         hr = prui->_Initialize(psrm, pdo);
         if (SUCCEEDED(hr))
         {
@@ -39,7 +39,7 @@ HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameModel* psrm, _In_opt_ 
 }
 
 
-// ISmartRenameView
+// ISmartRenameUI
 
 IFACEMETHODIMP CSmartRenameUI::Show()
 {
@@ -96,7 +96,7 @@ IFACEMETHODIMP CSmartRenameUI::OnRenameCompleted()
     return S_OK;
 }
 
-HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameModel* psrm, _In_opt_ IDataObject* pdo)
+HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo)
 {
     // Cache the smart rename model
     m_spsrm = psrm;

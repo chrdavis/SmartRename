@@ -129,7 +129,7 @@
   <ItemGroup>
     <ClInclude Include="SmartRenameItem.h" />
     <ClInclude Include="SmartRenameInterfaces.h" />
-    <ClInclude Include="SmartRenameModel.h" />
+    <ClInclude Include="SmartRenameManager.h" />
     <ClInclude Include="SmartRenameRegEx.h" />
     <ClInclude Include="srwlock.h" />
     <ClInclude Include="stdafx.h" />
@@ -137,7 +137,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SmartRenameItem.cpp" />
-    <ClCompile Include="SmartRenameModel.cpp" />
+    <ClCompile Include="SmartRenameManager.cpp" />
     <ClCompile Include="SmartRenameRegEx.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
