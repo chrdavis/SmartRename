@@ -2,7 +2,7 @@
 // Microsoft Visual C++ generated include file.
 // Used by SmartRenameExt.rc
 //
-#define IDS_SMARTRENAME                 101
+#define IDS_SMARTRENAME                 801
 
 // Next default values for new objects
 // 

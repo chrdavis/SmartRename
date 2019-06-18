@@ -19,7 +19,6 @@ HRESULT CSmartRenameUI::_DoModal(__in_opt HWND hwnd)
     return hr;
 }
 
-
 HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameUI** ppsrui)
 {
     *ppsrui = nullptr;
@@ -37,7 +36,6 @@ HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt
     }
     return hr;
 }
-
 
 // ISmartRenameUI
 
@@ -98,13 +96,13 @@ IFACEMETHODIMP CSmartRenameUI::OnRenameCompleted()
 
 HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo)
 {
-    // Cache the smart rename model
+    // Cache the smart rename manager
     m_spsrm = psrm;
 
     // Cache the data object for enumeration later
     m_spdo = pdo;
 
-    // Subscribe to smart rename model events
+    // Subscribe to smart rename manager events
     HRESULT hr = m_spsrm->Advise(this, &m_cookie);
     
     if (FAILED(hr))
@@ -233,7 +231,7 @@ void CSmartRenameUI::_OnRename()
 /*void CSmartRenameUI::_OnRunRenamePreview()
 {
     // TODO: We should have a interface and event interface that wraps the search/replace/regex inputs and settings/options
-    // TODO: That way the model could respond to changes set via the UI and it will run the rename preview on its own
+    // TODO: That way the manager could respond to changes set via the UI and it will run the rename preview on its own
 }*/
 
 INT_PTR CSmartRenameUI::_DlgProc(UINT uMsg, WPARAM wParam, LPARAM)

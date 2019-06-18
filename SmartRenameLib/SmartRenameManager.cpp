@@ -32,7 +32,7 @@ IFACEMETHODIMP CSmartRenameManager::Advise(ISmartRenameManagerEvents* renameOpEv
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
     m_cookie++;
-    SMART_RENAME_MODEL_EVENT srme;
+    SMART_RENAME_MGR_EVENT srme;
     srme.cookie = m_cookie;
     srme.pEvents = renameOpEvents;
     renameOpEvents->AddRef();
@@ -48,7 +48,7 @@ IFACEMETHODIMP CSmartRenameManager::UnAdvise(DWORD cookie)
     HRESULT hr = E_FAIL;
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MODEL_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
     {
         if (it->cookie == cookie)
         {
@@ -227,7 +227,7 @@ enum
 
 struct WorkerThreadData
 {
-    DWORD modelThreadId;
+    DWORD managerThreadId;
     HANDLE startEvent;
     HANDLE cancelEvent;
     CComPtr<ISmartRenameManager> spsrm;
@@ -281,7 +281,7 @@ HRESULT CSmartRenameManager::_CreateFileOpWorkerThread()
     HRESULT hr = pwtd ? S_OK : E_OUTOFMEMORY;
     if (SUCCEEDED(hr))
     {
-        pwtd->modelThreadId = GetCurrentThreadId();
+        pwtd->managerThreadId = GetCurrentThreadId();
         pwtd->startEvent = m_startRegExWorkerEvent;
         pwtd->cancelEvent = nullptr;
         pwtd->spsrm = this;
@@ -343,8 +343,8 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(void* pv)
                                         CoTaskMemFree(path);
                                     }
                                 }
-                                // Send the model thread the item processed message
-                                PostThreadMessage(pwtd->modelThreadId, SRM_REGEX_ITEM_PROCESSED, GetCurrentThreadId(), u);
+                                // Send the manager thread the item processed message
+                                PostThreadMessage(pwtd->managerThreadId, SRM_REGEX_ITEM_PROCESSED, GetCurrentThreadId(), u);
                             }
                         }
                     }
@@ -352,7 +352,7 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(void* pv)
             }
 
             // Send the manager thread the completion message
-            PostThreadMessage(pwtd->modelThreadId, SRM_REGEX_COMPLETE, GetCurrentThreadId(), 0);
+            PostThreadMessage(pwtd->managerThreadId, SRM_REGEX_COMPLETE, GetCurrentThreadId(), 0);
 
             delete pwtd;
         }
@@ -437,7 +437,7 @@ HRESULT CSmartRenameManager::_CreateRegExWorkerThread()
     HRESULT hr = pwtd ? S_OK : E_OUTOFMEMORY;
     if (SUCCEEDED(hr))
     {
-        pwtd->modelThreadId = GetCurrentThreadId();
+        pwtd->managerThreadId = GetCurrentThreadId();
         pwtd->startEvent = m_startRegExWorkerEvent;
         pwtd->cancelEvent = m_cancelRegExWorkerEvent;
         pwtd->spsrm = this;
@@ -472,9 +472,9 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(void* pv)
                         // Check if cancel event is signaled
                         if (WaitForSingleObject(pwtd->cancelEvent, 0) == WAIT_OBJECT_0)
                         {
-                            // Canceled from model
-                            // Send the model thread the canceled message
-                            PostThreadMessage(pwtd->modelThreadId, SRM_REGEX_CANCELED, GetCurrentThreadId(), 0);
+                            // Canceled from manager
+                            // Send the manager thread the canceled message
+                            PostThreadMessage(pwtd->managerThreadId, SRM_REGEX_CANCELED, GetCurrentThreadId(), 0);
                             break;
                         }
 
@@ -492,15 +492,15 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(void* pv)
                                 }
                                 CoTaskMemFree(originalName);
                             }
-                            // Send the model thread the item processed message
-                            PostThreadMessage(pwtd->modelThreadId, SRM_REGEX_ITEM_PROCESSED, GetCurrentThreadId(), u);
+                            // Send the manager thread the item processed message
+                            PostThreadMessage(pwtd->managerThreadId, SRM_REGEX_ITEM_PROCESSED, GetCurrentThreadId(), u);
                         }
                     }
                 }
             }
 
             // Send the manager thread the completion message
-            PostThreadMessage(pwtd->modelThreadId, SRM_REGEX_COMPLETE, GetCurrentThreadId(), 0);
+            PostThreadMessage(pwtd->managerThreadId, SRM_REGEX_COMPLETE, GetCurrentThreadId(), 0);
 
             delete pwtd;
         }
@@ -521,7 +521,7 @@ void CSmartRenameManager::_OnItemAdded(_In_ ISmartRenameItem* renameItem)
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MODEL_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -534,7 +534,7 @@ void CSmartRenameManager::_OnUpdate(_In_ ISmartRenameItem* renameItem)
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MODEL_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -547,7 +547,7 @@ void CSmartRenameManager::_OnError(_In_ ISmartRenameItem* renameItem)
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MODEL_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -560,7 +560,7 @@ void CSmartRenameManager::_OnRegExStarted()
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MODEL_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -573,7 +573,7 @@ void CSmartRenameManager::_OnRegExCanceled()
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MODEL_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -586,7 +586,7 @@ void CSmartRenameManager::_OnRegExCompleted()
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MODEL_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -599,7 +599,7 @@ void CSmartRenameManager::_OnRenameStarted()
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MODEL_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -612,7 +612,7 @@ void CSmartRenameManager::_OnRenameCompleted()
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MODEL_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -684,7 +684,7 @@ bool CSmartRenameManager::_EnumeratePath(_In_ PCWSTR path, _In_ UINT depth)
                         {
                             if (SUCCEEDED(spsriNew->put_path(pathFile)))
                             {
-                                // Add the item to the model
+                                // Add the item to the manager
                                 ret = SUCCEEDED(AddItem(spsriNew)) || ret;
                             }
                         }
@@ -704,7 +704,7 @@ void CSmartRenameManager::_ClearEventHandlers()
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
     // Cleanup event handlers
-    for (std::vector<SMART_RENAME_MODEL_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
     {
         it->cookie = 0;
         if (it->pEvents)

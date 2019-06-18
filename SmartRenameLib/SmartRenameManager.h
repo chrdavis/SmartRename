@@ -84,7 +84,7 @@ private:
 
     DWORD m_cookie = 0;
 
-    struct SMART_RENAME_MODEL_EVENT
+    struct SMART_RENAME_MGR_EVENT
     {
         ISmartRenameManagerEvents* pEvents;
         DWORD cookie;
@@ -93,7 +93,7 @@ private:
     CComPtr<ISmartRenameItemFactory> m_spItemFactory;
     CComPtr<ISmartRenameRegEx> m_spRegEx;
 
-    _Guarded_by_(m_lockEvents) std::vector<SMART_RENAME_MODEL_EVENT> m_SmartRenameManagerEvents;
+    _Guarded_by_(m_lockEvents) std::vector<SMART_RENAME_MGR_EVENT> m_SmartRenameManagerEvents;
     _Guarded_by_(m_lockItems) std::vector<ISmartRenameItem*> m_smartRenameItems;
 
     long m_refCount;

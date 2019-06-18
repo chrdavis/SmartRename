@@ -74,7 +74,7 @@ public:
 interface __declspec(uuid("001BBD88-53D2-4FA6-95D2-F9A9FA4F9F70")) ISmartRenameManager : public IUnknown
 {
 public:
-    IFACEMETHOD(Advise)(_In_ ISmartRenameManagerEvents* renameModelEvent, _Out_ DWORD* cookie) = 0;
+    IFACEMETHOD(Advise)(_In_ ISmartRenameManagerEvents* renameManagerEvent, _Out_ DWORD* cookie) = 0;
     IFACEMETHOD(UnAdvise)(_In_ DWORD cookie) = 0;
     IFACEMETHOD(Start)() = 0;
     IFACEMETHOD(Stop)() = 0;

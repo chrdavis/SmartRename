@@ -124,11 +124,11 @@ DWORD WINAPI CSmartRenameMenu::s_SmartRenameUIThreadProc(_In_ void* pData)
     CComPtr<IDataObject> spdo;
     if (SUCCEEDED(CoGetInterfaceAndReleaseStream(pstrm, IID_PPV_ARGS(&spdo))))
     {
-        // Create the smart rename model
+        // Create the smart rename manager
         CComPtr<ISmartRenameManager> spsrm;
         if (SUCCEEDED(CSmartRenameManager::s_CreateInstance(&spsrm)))
         {
-            // Create the smart rename UI instance and pass the smart rename model
+            // Create the smart rename UI instance and pass the smart rename manager
             CComPtr<ISmartRenameUI> spsrui;
             if (SUCCEEDED(CSmartRenameUI::s_CreateInstance(spsrm, spdo, &spsrui)))
             {
