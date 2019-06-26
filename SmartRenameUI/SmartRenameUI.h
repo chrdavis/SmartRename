@@ -76,6 +76,7 @@ private:
     }
 
     INT_PTR _DlgProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
+    bool _OnNotify(_In_ UINT nMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
 
     HRESULT _Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo);
 
@@ -89,7 +90,9 @@ private:
     HRESULT _WriteSettings();
 
     long m_refCount = 0;
+    bool m_initialized = false;
     HWND m_hwnd = nullptr;
+    HWND m_hwndLV = nullptr;
     HICON m_iconMain = nullptr;
     DWORD m_cookie = 0;
     CComPtr<ISmartRenameManager> m_spsrm;

@@ -1,6 +1,11 @@
 #include "stdafx.h"
 #include "SmartRenameManager.h"
 #include <shobjidl.h>
+#include <shellapi.h>
+
+
+// The default FOF flags to use in the rename operations
+#define FOF_DEFAULTFLAGS (FOF_ALLOWUNDO | FOFX_SHOWELEVATIONPROMPT | FOF_RENAMEONCOLLISION)
 
 IFACEMETHODIMP_(ULONG) CSmartRenameManager::AddRef()
 {
@@ -28,7 +33,7 @@ IFACEMETHODIMP CSmartRenameManager::QueryInterface(_In_ REFIID riid, _Outptr_ vo
     return QISearch(this, qit, riid, ppv);
 }
 
-IFACEMETHODIMP CSmartRenameManager::Advise(ISmartRenameManagerEvents* renameOpEvents, DWORD* cookie)
+IFACEMETHODIMP CSmartRenameManager::Advise(_In_ ISmartRenameManagerEvents* renameOpEvents, _Out_ DWORD* cookie)
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
     m_cookie++;
@@ -43,7 +48,7 @@ IFACEMETHODIMP CSmartRenameManager::Advise(ISmartRenameManagerEvents* renameOpEv
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameManager::UnAdvise(DWORD cookie)
+IFACEMETHODIMP CSmartRenameManager::UnAdvise(_In_ DWORD cookie)
 {
     HRESULT hr = E_FAIL;
     CSRWExclusiveAutoLock lock(&m_lockEvents);
@@ -345,6 +350,21 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(void* pv)
                                 }
                                 // Send the manager thread the item processed message
                                 PostThreadMessage(pwtd->managerThreadId, SRM_REGEX_ITEM_PROCESSED, GetCurrentThreadId(), u);
+                            }
+                        }
+
+                        // Set the operation flags
+                        if (SUCCEEDED(spFileOp->SetOperationFlags(FOF_DEFAULTFLAGS)))
+                        {
+                            // TODO: Update with hwnd of UI
+                            // Set the parent window
+                            //if (SUCCEEDED(pfo->SetOwnerWindow(_hwndParent)))
+                            {
+                                // Perform the operation
+                                // We don't care about the return code here. We would rather
+                                // return control back to explorer so the user can cleanly
+                                // undo the operation if it failed halfway through.
+                                spFileOp->PerformOperations();
                             }
                         }
                     }

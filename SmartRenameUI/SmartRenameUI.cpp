@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "resource.h"
 #include "SmartRenameUI.h"
+#include <commctrl.h>
 
 extern HINSTANCE g_hInst;
 
@@ -209,6 +210,8 @@ void CSmartRenameUI::_OnInitDlg()
         SendMessage(m_hwnd, WM_SETICON, (WPARAM)ICON_SMALL, (LPARAM)m_iconMain);
         SendMessage(m_hwnd, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)m_iconMain);
     }*/
+
+    m_initialized = true;
 }
 
 void CSmartRenameUI::_OnCloseDlg()
@@ -234,7 +237,7 @@ void CSmartRenameUI::_OnRename()
     // TODO: That way the manager could respond to changes set via the UI and it will run the rename preview on its own
 }*/
 
-INT_PTR CSmartRenameUI::_DlgProc(UINT uMsg, WPARAM wParam, LPARAM)
+INT_PTR CSmartRenameUI::_DlgProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     INT_PTR bRet = TRUE;   // default for all handled cases in switch below
 
@@ -260,6 +263,10 @@ INT_PTR CSmartRenameUI::_DlgProc(UINT uMsg, WPARAM wParam, LPARAM)
     }
     break;
 
+    case WM_NOTIFY:
+        bRet = _OnNotify(uMsg, wParam, lParam);
+        break;
+
     case WM_CLOSE:
         _OnCloseDlg();
         break;
@@ -273,3 +280,54 @@ INT_PTR CSmartRenameUI::_DlgProc(UINT uMsg, WPARAM wParam, LPARAM)
     }
     return bRet;
 }
+
+bool CSmartRenameUI::_OnNotify(_In_ UINT nMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+    bool ret = false;
+    if (nMsg == WM_NOTIFY)
+    {
+        LPNMHDR          pnmdr = (LPNMHDR)lParam;
+        LPNMLISTVIEW     pnmlv = (LPNMLISTVIEW)pnmdr;
+        NMLVEMPTYMARKUP* pnmMarkup = NULL;
+
+        if (pnmdr)
+        {
+            switch (pnmdr->code)
+            {
+            case HDN_ITEMSTATEICONCLICK:
+                ListView_SetCheckState(m_hwndLV, -1, (!(((LPNMHEADER)lParam)->pitem->fmt & HDF_CHECKED)));
+                break;
+
+            case LVN_GETEMPTYMARKUP:
+                pnmMarkup = (NMLVEMPTYMARKUP*)lParam;
+                pnmMarkup->dwFlags = EMF_CENTERED;
+                //LoadString(g_hInst, IDS_LISTVIEW_EMPTY, pnmMarkup->szMarkup, ARRAYSIZE(pnmMarkup->szMarkup));
+                ret = true;
+                break;
+
+            case LVN_BEGINLABELEDIT:
+                ret = true;
+                break;
+
+            case LVN_ITEMCHANGED:
+                if ((m_initialized) &&
+                    (pnmlv->uChanged & LVIF_STATE) &&
+                    ((pnmlv->uNewState & LVIS_STATEIMAGEMASK) != (pnmlv->uOldState & LVIS_STATEIMAGEMASK)) &&
+                    (pnmlv->uOldState != 0))
+                {
+                    //pDlg->_pRenameItemLV->UpdateItemCheckState(pnmlv->iItem);
+                    //PostThreadMessage(pDlg->_dwPreviewThreadId, REM_UPDATEITEM, (WPARAM)pnmlv->iItem, 0);
+                }
+                break;
+
+            case NM_DBLCLK:
+                BOOL fCheck = ListView_GetCheckState(m_hwndLV, pnmlv->iItem);
+                ListView_SetCheckState(m_hwndLV, pnmlv->iItem, !fCheck);
+                break;
+            }
+        }
+    }
+
+    return ret;
+}
+
