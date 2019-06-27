@@ -2,6 +2,7 @@
 #include "SmartRenameManager.h"
 #include <shobjidl.h>
 #include <shellapi.h>
+#include <algorithm>
 
 
 // The default FOF flags to use in the rename operations
@@ -81,6 +82,12 @@ IFACEMETHODIMP CSmartRenameManager::Stop()
     return E_NOTIMPL;
 }
 
+IFACEMETHODIMP CSmartRenameManager::Rename(_In_ HWND hwndParent)
+{
+    m_hwndParent = hwndParent;
+    return _PerformFileOperation();
+}
+
 IFACEMETHODIMP CSmartRenameManager::Reset()
 {
     // Stop all threads and wait
@@ -107,7 +114,7 @@ IFACEMETHODIMP CSmartRenameManager::AddItem(_In_ ISmartRenameItem* pItem)
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameManager::GetItem(_In_ UINT index, _COM_Outptr_ ISmartRenameItem** ppItem)
+IFACEMETHODIMP CSmartRenameManager::GetItemByIndex(_In_ UINT index, _COM_Outptr_ ISmartRenameItem** ppItem)
 {
     *ppItem = nullptr;
     CSRWSharedAutoLock lock(&m_lockItems);
@@ -122,10 +129,49 @@ IFACEMETHODIMP CSmartRenameManager::GetItem(_In_ UINT index, _COM_Outptr_ ISmart
     return hr;
 }
 
+IFACEMETHODIMP CSmartRenameManager::GetItemById(_In_ int id, _COM_Outptr_ ISmartRenameItem** ppItem)
+{
+    *ppItem = nullptr;
+
+    CSRWSharedAutoLock lock(&m_lockItems);
+    HRESULT hr = E_FAIL;
+    auto iterator = std::find_if(m_smartRenameItems.begin(), m_smartRenameItems.end(), [id](_In_ ISmartRenameItem* currentItem)
+        {
+            int idCurrent;
+            currentItem->get_id(&idCurrent);
+            return (idCurrent == id);
+        });
+
+    if (iterator != m_smartRenameItems.end())
+    {
+        *ppItem = (*iterator);
+        (*ppItem)->AddRef();
+        hr = S_OK;
+    }
+
+    return hr;
+}
+
 IFACEMETHODIMP CSmartRenameManager::GetItemCount(_Out_ UINT* count)
 {
     CSRWSharedAutoLock lock(&m_lockItems);
     *count = static_cast<UINT>(m_smartRenameItems.size());
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameManager::get_flags(_Out_ DWORD* flags)
+{
+    *flags = m_flags;
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameManager::put_flags(_In_ DWORD flags)
+{
+    if (flags != m_flags)
+    {
+        m_flags = flags;
+        m_spRegEx->put_flags(flags);
+    }
     return S_OK;
 }
 
@@ -179,13 +225,7 @@ IFACEMETHODIMP CSmartRenameManager::OnReplaceTermChanged(_In_ PCWSTR /*replaceTe
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameManager::OnFlagsChanged(_In_ DWORD /*flags*/)
-{
-    // TODO: Cancel and restart rename regex thread
-    return S_OK;
-}
-
-HRESULT CSmartRenameManager::s_CreateInstance(_COM_Outptr_ ISmartRenameManager** ppsrm)
+HRESULT CSmartRenameManager::s_CreateInstance(_Outptr_ ISmartRenameManager** ppsrm)
 {
     *ppsrm = nullptr;
     CSmartRenameManager *psrm = new CSmartRenameManager();
@@ -232,9 +272,10 @@ enum
 
 struct WorkerThreadData
 {
-    DWORD managerThreadId;
-    HANDLE startEvent;
-    HANDLE cancelEvent;
+    DWORD managerThreadId = 0;
+    HANDLE startEvent = nullptr;
+    HANDLE cancelEvent = nullptr;
+    HWND hwndParent = nullptr;
     CComPtr<ISmartRenameManager> spsrm;
 };
 
@@ -301,7 +342,7 @@ HRESULT CSmartRenameManager::_CreateFileOpWorkerThread()
     return hr;
 }
 
-DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(void* pv)
+DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(_In_ void* pv)
 {
     if (SUCCEEDED(CoInitializeEx(NULL, 0)))
     {
@@ -327,7 +368,7 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(void* pv)
                         for (UINT u = 0; u <= itemCount; u++)
                         {
                             CComPtr<ISmartRenameItem> spItem;
-                            if (SUCCEEDED(pwtd->spsrm->GetItem(u, &spItem)))
+                            if (SUCCEEDED(pwtd->spsrm->GetItemByIndex(u, &spItem)))
                             {
                                 if (_ShouldRenameItem(spItem, flags))
                                 {
@@ -348,6 +389,8 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(void* pv)
                                         CoTaskMemFree(path);
                                     }
                                 }
+
+                                // TODO: WE HAVE NOT RENAMED THIS YET!  WE SHOULD USING THE PROGRESS SYNK AND HAVE A MAP FROM PATH TO INDEX OR SOMETHING
                                 // Send the manager thread the item processed message
                                 PostThreadMessage(pwtd->managerThreadId, SRM_REGEX_ITEM_PROCESSED, GetCurrentThreadId(), u);
                             }
@@ -358,14 +401,16 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(void* pv)
                         {
                             // TODO: Update with hwnd of UI
                             // Set the parent window
-                            //if (SUCCEEDED(pfo->SetOwnerWindow(_hwndParent)))
+                            if (pwtd->hwndParent)
                             {
-                                // Perform the operation
-                                // We don't care about the return code here. We would rather
-                                // return control back to explorer so the user can cleanly
-                                // undo the operation if it failed halfway through.
-                                spFileOp->PerformOperations();
+                                spFileOp->SetOwnerWindow(pwtd->hwndParent);
                             }
+                            
+                            // Perform the operation
+                            // We don't care about the return code here. We would rather
+                            // return control back to explorer so the user can cleanly
+                            // undo the operation if it failed halfway through.
+                            spFileOp->PerformOperations();
                         }
                     }
                 }
@@ -460,6 +505,7 @@ HRESULT CSmartRenameManager::_CreateRegExWorkerThread()
         pwtd->managerThreadId = GetCurrentThreadId();
         pwtd->startEvent = m_startRegExWorkerEvent;
         pwtd->cancelEvent = m_cancelRegExWorkerEvent;
+        pwtd->hwndParent = m_hwndParent;
         pwtd->spsrm = this;
         m_regExWorkerThreadHandle = CreateThread(nullptr, 0, s_regexWorkerThread, pwtd, 0, nullptr);
         hr = (m_regExWorkerThreadHandle) ? S_OK : E_FAIL;
@@ -472,7 +518,7 @@ HRESULT CSmartRenameManager::_CreateRegExWorkerThread()
     return hr;
 }
 
-DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(void* pv)
+DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
 {
     if (SUCCEEDED(CoInitializeEx(NULL, 0)))
     {
@@ -499,7 +545,7 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(void* pv)
                         }
 
                         CComPtr<ISmartRenameItem> spItem;
-                        if (SUCCEEDED(pwtd->spsrm->GetItem(u, &spItem)))
+                        if (SUCCEEDED(pwtd->spsrm->GetItemByIndex(u, &spItem)))
                         {
                             PWSTR originalName = nullptr;
                             if (SUCCEEDED(spItem->get_originalName(&originalName)))

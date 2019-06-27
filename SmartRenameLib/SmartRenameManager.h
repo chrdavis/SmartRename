@@ -20,9 +20,13 @@ public:
     IFACEMETHODIMP Stop();
     IFACEMETHODIMP Reset();
     IFACEMETHODIMP Shutdown();
+    IFACEMETHODIMP Rename(_In_ HWND hwndParent);
     IFACEMETHODIMP AddItem(_In_ ISmartRenameItem* pItem);
-    IFACEMETHODIMP GetItem(_In_ UINT index, _COM_Outptr_ ISmartRenameItem** ppItem);
+    IFACEMETHODIMP GetItemByIndex(_In_ UINT index, _COM_Outptr_ ISmartRenameItem** ppItem);
+    IFACEMETHODIMP GetItemById(_In_ int id, _COM_Outptr_ ISmartRenameItem** ppItem);
     IFACEMETHODIMP GetItemCount(_Out_ UINT* count);
+    IFACEMETHODIMP get_flags(_Out_ DWORD* flags);
+    IFACEMETHODIMP put_flags(_In_ DWORD flags);
     IFACEMETHODIMP get_smartRenameRegEx(_COM_Outptr_ ISmartRenameRegEx** ppRegEx);
     IFACEMETHODIMP put_smartRenameRegEx(_In_ ISmartRenameRegEx* pRegEx);
     IFACEMETHODIMP get_smartRenameItemFactory(_COM_Outptr_ ISmartRenameItemFactory** ppItemFactory);
@@ -31,9 +35,8 @@ public:
     // ISmartRenameRegExEvents
     IFACEMETHODIMP OnSearchTermChanged(_In_ PCWSTR searchTerm);
     IFACEMETHODIMP OnReplaceTermChanged(_In_ PCWSTR replaceTerm);
-    IFACEMETHODIMP OnFlagsChanged(_In_ DWORD flags);
 
-    static HRESULT s_CreateInstance(_COM_Outptr_ ISmartRenameManager** ppsrm);
+    static HRESULT s_CreateInstance(_Outptr_ ISmartRenameManager** ppsrm);
 
 private:
     CSmartRenameManager();
@@ -82,6 +85,8 @@ private:
     CSRWLock m_lockEvents;
     CSRWLock m_lockItems;
 
+    DWORD m_flags = 0;
+
     DWORD m_cookie = 0;
 
     struct SMART_RENAME_MGR_EVENT
@@ -95,6 +100,9 @@ private:
 
     _Guarded_by_(m_lockEvents) std::vector<SMART_RENAME_MGR_EVENT> m_SmartRenameManagerEvents;
     _Guarded_by_(m_lockItems) std::vector<ISmartRenameItem*> m_smartRenameItems;
+
+    // Parent HWND used by IFileOperation
+    HWND m_hwndParent = nullptr;
 
     long m_refCount;
 };

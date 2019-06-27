@@ -17,7 +17,6 @@ interface __declspec(uuid("3ECBA62B-E0F0-4472-AA2E-DEE7A1AA46B9")) ISmartRenameR
 public:
     IFACEMETHOD(OnSearchTermChanged)(_In_ PCWSTR searchTerm) = 0;
     IFACEMETHOD(OnReplaceTermChanged)(_In_ PCWSTR replaceTerm) = 0;
-    IFACEMETHOD(OnFlagsChanged)(_In_ DWORD flags) = 0;
 };
 
 interface __declspec(uuid("E3ED45B5-9CE0-47E2-A595-67EB950B9B72")) ISmartRenameRegEx : public IUnknown
@@ -49,6 +48,8 @@ public:
     IFACEMETHOD(get_shouldRename)(_Out_ bool* shouldRename) = 0;
     IFACEMETHOD(put_shouldRename)(_In_ bool shouldRename) = 0;
     IFACEMETHOD(get_id)(_Out_ int *id) = 0;
+    IFACEMETHOD(get_iconIndex)(_Out_ int* iconIndex) = 0;
+    IFACEMETHOD(get_depth)(_Out_ UINT* depth) = 0;
     IFACEMETHOD(Reset)() = 0;
 };
 
@@ -80,9 +81,13 @@ public:
     IFACEMETHOD(Stop)() = 0;
     IFACEMETHOD(Reset)() = 0;
     IFACEMETHOD(Shutdown)() = 0;
+    IFACEMETHOD(Rename)(_In_ HWND hwndParent) = 0;
     IFACEMETHOD(AddItem)(_In_ ISmartRenameItem* pItem) = 0;
-    IFACEMETHOD(GetItem)(_In_ UINT index, _COM_Outptr_ ISmartRenameItem** ppItem) = 0;
+    IFACEMETHOD(GetItemByIndex)(_In_ UINT index, _COM_Outptr_ ISmartRenameItem** ppItem) = 0;
+    IFACEMETHOD(GetItemById)(_In_ int id, _COM_Outptr_ ISmartRenameItem** ppItem) = 0;
     IFACEMETHOD(GetItemCount)(_Out_ UINT* count) = 0;
+    IFACEMETHOD(get_flags)(_Out_ DWORD* flags) = 0;
+    IFACEMETHOD(put_flags)(_In_ DWORD flags) = 0;
     IFACEMETHOD(get_smartRenameRegEx)(_COM_Outptr_ ISmartRenameRegEx** ppRegEx) = 0;
     IFACEMETHOD(put_smartRenameRegEx)(_In_ ISmartRenameRegEx* pRegEx) = 0;
     IFACEMETHOD(get_smartRenameItemFactory)(_COM_Outptr_ ISmartRenameItemFactory** ppItemFactory) = 0;

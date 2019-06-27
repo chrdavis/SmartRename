@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "SmartRenameItem.h"
 
+int CSmartRenameItem::s_id = 0;
+
 IFACEMETHODIMP_(ULONG) CSmartRenameItem::AddRef()
 {
     return InterlockedIncrement(&m_refCount);
@@ -136,6 +138,18 @@ IFACEMETHODIMP CSmartRenameItem::get_id(_Out_ int* id)
     return S_OK;
 }
 
+IFACEMETHODIMP CSmartRenameItem::get_iconIndex(_Out_ int* iconIndex)
+{
+    *iconIndex = m_iconIndex;
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameItem::get_depth(_Out_ UINT* depth)
+{
+    *depth = m_depth;
+    return S_OK;
+}
+
 IFACEMETHODIMP CSmartRenameItem::Reset()
 {
     CSRWSharedAutoLock lock(&m_lock);
@@ -160,7 +174,8 @@ HRESULT CSmartRenameItem::s_CreateInstance(_Outptr_ ISmartRenameItem** renameIte
 }
 
 CSmartRenameItem::CSmartRenameItem() :
-    m_refCount(1)
+    m_refCount(1),
+    m_id(++s_id)
 {
 }
 
@@ -169,11 +184,6 @@ CSmartRenameItem::~CSmartRenameItem()
     CoTaskMemFree(m_fullPath);
     CoTaskMemFree(m_originalName);
     CoTaskMemFree(m_newName);
-}
-
-void CSmartRenameItem::_SetId(_In_ int id)
-{
-    m_id = id;
 }
 
 void CSmartRenameItem::_SetIsFolder(_In_ bool isFolder)

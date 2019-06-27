@@ -1,6 +1,37 @@
 #pragma once
 #include <SmartRenameInterfaces.h>
 
+class CSmartRenameListView
+{
+
+public:
+    CSmartRenameListView(_In_ HWND hwndLV);
+    ~CSmartRenameListView();
+
+    HRESULT Init();
+    HRESULT Clear();
+    HRESULT UpdateItems(_In_ ISmartRenameManager* psrm);
+    HRESULT InsertItem(_In_ ISmartRenameItem* pItem);
+    HRESULT UpdateItem(_In_ ISmartRenameItem* pItem);
+    HRESULT RemoveItem(_In_ ISmartRenameItem* pItem);
+    HRESULT ToggleAll(_In_ bool selected);
+    HRESULT UpdateItemCheckState(_In_ int iItem);
+    HRESULT GetItemByIndex(_In_ int nIndex, _Out_ ISmartRenameItem** ppItem);
+    HWND GetHWND() { return m_hwndLV; }
+
+private:
+    HRESULT _InsertItems(_In_ ISmartRenameManager* psrm);
+    HRESULT _UpdateSubItems(_In_ ISmartRenameItem* pItem, _In_ int iItem);
+    HRESULT _UpdateColumns();
+    HRESULT _UpdateColumnSizes();
+    HRESULT _UpdateHeaderCheckState(_In_ bool check);
+    HRESULT _FindItemByParam(_In_ LPARAM lParam, _Out_ int* piIndex);
+
+    bool _ShouldIncludeItem(_In_ ISmartRenameItem* pItem);
+
+    HWND m_hwndLV = nullptr;
+};
+
 class CSmartRenameUI :
     public ISmartRenameUI,
     public ISmartRenameManagerEvents
@@ -42,6 +73,8 @@ public:
     IFACEMETHODIMP Show();
     IFACEMETHODIMP Close();
     IFACEMETHODIMP Update();
+    IFACEMETHODIMP get_hwnd(_Out_ HWND* hwnd);
+    IFACEMETHODIMP get_showUI(_Out_ bool* showUI);
 
     // ISmartRenameManagerEvents
     IFACEMETHODIMP OnItemAdded(_In_ ISmartRenameItem* renameItem);
@@ -53,7 +86,7 @@ public:
     IFACEMETHODIMP OnRenameStarted();
     IFACEMETHODIMP OnRenameCompleted();
 
-    static HRESULT s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _COM_Outptr_ ISmartRenameUI** ppsrui);
+    static HRESULT s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _Outptr_ ISmartRenameUI** ppsrui);
 
 private:
     ~CSmartRenameUI()
@@ -76,7 +109,8 @@ private:
     }
 
     INT_PTR _DlgProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
-    bool _OnNotify(_In_ UINT nMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
+    void _OnCommand(_In_ WPARAM wParam, _In_ LPARAM lParam);
+    bool _OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam);
 
     HRESULT _Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo);
 

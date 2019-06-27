@@ -32,7 +32,7 @@ IFACEMETHODIMP CSmartRenameRegEx::QueryInterface(_In_ REFIID riid, _Outptr_ void
     return QISearch(this, qit, riid, ppv);
 }
 
-IFACEMETHODIMP CSmartRenameRegEx::Advise(ISmartRenameRegExEvents* regExEvents, DWORD* cookie)
+IFACEMETHODIMP CSmartRenameRegEx::Advise(_In_ ISmartRenameRegExEvents* regExEvents, _Out_ DWORD* cookie)
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
     m_cookie++;
@@ -47,7 +47,7 @@ IFACEMETHODIMP CSmartRenameRegEx::Advise(ISmartRenameRegExEvents* regExEvents, D
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameRegEx::UnAdvise(DWORD cookie)
+IFACEMETHODIMP CSmartRenameRegEx::UnAdvise(_In_ DWORD cookie)
 {
     HRESULT hr = E_FAIL;
     CSRWExclusiveAutoLock lock(&m_lockEvents);
@@ -143,7 +143,6 @@ IFACEMETHODIMP CSmartRenameRegEx::put_flags(_In_ DWORD flags)
     if (m_flags != flags)
     {
         m_flags = flags;
-        _OnFlagsChanged();
     }
     return S_OK;
 }
@@ -216,19 +215,6 @@ void CSmartRenameRegEx::_OnReplaceTermChanged()
         if (it->pEvents)
         {
             it->pEvents->OnReplaceTermChanged(m_replaceTerm);
-        }
-    }
-}
-
-void CSmartRenameRegEx::_OnFlagsChanged()
-{
-    CSRWExclusiveAutoLock lock(&m_lockEvents);
-
-    for (std::vector<SMART_RENAME_REGEX_EVENT>::iterator it = m_smartRenameRegExEvents.begin(); it != m_smartRenameRegExEvents.end(); ++it)
-    {
-        if (it->pEvents)
-        {
-            it->pEvents->OnFlagsChanged(m_flags);
         }
     }
 }

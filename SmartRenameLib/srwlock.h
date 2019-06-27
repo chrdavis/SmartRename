@@ -10,21 +10,25 @@ public:
         InitializeSRWLock(&m_lock);
     }
 
+    _Acquires_shared_lock_(this->m_lock)
     void LockShared()
     {
         AcquireSRWLockShared(&m_lock);
     }
 
+    _Acquires_exclusive_lock_(this->m_lock)
     void LockExclusive()
     {
         AcquireSRWLockExclusive(&m_lock);
     }
 
+    _Releases_shared_lock_(this->m_lock)
     void ReleaseShared()
     {
         ReleaseSRWLockShared(&m_lock);
     }
 
+    _Releases_exclusive_lock_(this->m_lock)
     void ReleaseExclusive()
     {
         ReleaseSRWLockExclusive(&m_lock);

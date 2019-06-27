@@ -26,10 +26,12 @@ public:
     IFACEMETHODIMP get_shouldRename(_Out_ bool* shouldRename);
     IFACEMETHODIMP put_shouldRename(_In_ bool shouldRename);
     IFACEMETHODIMP get_id(_Out_ int* id);
+    IFACEMETHODIMP get_iconIndex(_Out_ int* iconIndex);
+    IFACEMETHODIMP get_depth(_Out_ UINT* depth);
     IFACEMETHODIMP Reset();
 
     // ISmartRenameItemFactory
-    IFACEMETHODIMP Create(_COM_Outptr_ ISmartRenameItem** ppItem)
+    IFACEMETHODIMP Create(_Outptr_ ISmartRenameItem** ppItem)
     {
         return CSmartRenameItem::s_CreateInstance(ppItem);
     }
@@ -38,10 +40,10 @@ public:
     static HRESULT s_CreateInstance(_Outptr_ ISmartRenameItem** renameItem);
 
 private:
+    static int s_id;
     CSmartRenameItem();
     ~CSmartRenameItem();
 
-    void    _SetId(_In_ int id);
     void    _SetIsFolder(_In_ bool isFolder);
     HRESULT _GetOriginalNameFromFullPath();
 
@@ -51,6 +53,8 @@ private:
     bool     m_isSubFolderContent = false;
     bool     m_shouldRename = true;
     int      m_id = -1;
+    int      m_iconIndex = -1;
+    UINT     m_depth = 0;
     HRESULT  m_error = S_OK;
     PWSTR    m_originalName = nullptr;
     PWSTR    m_fullPath = nullptr;

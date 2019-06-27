@@ -31,7 +31,6 @@ private:
 
     void _OnSearchTermChanged();
     void _OnReplaceTermChanged();
-    void _OnFlagsChanged();
 
     DWORD m_flags = 0;
     PWSTR m_searchTerm = nullptr;
