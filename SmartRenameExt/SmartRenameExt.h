@@ -46,8 +46,8 @@ public:
         return E_NOTIMPL;
     }
 
-    static HRESULT s_CreateInstance(_In_opt_ IUnknown* punkOuter, _In_ REFIID riid, _Out_ void** ppv);
-    static DWORD WINAPI s_SmartRenameUIThreadProc(void* pData);
+    static HRESULT s_CreateInstance(_In_opt_ IUnknown* punkOuter, _In_ REFIID riid, _Outptr_ void** ppv);
+    static DWORD WINAPI s_SmartRenameUIThreadProc(_In_ void* pData);
 
 private:
     ~CSmartRenameMenu();

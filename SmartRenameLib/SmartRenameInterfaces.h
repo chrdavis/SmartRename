@@ -37,7 +37,7 @@ interface __declspec(uuid("C7F59201-4DE1-4855-A3A2-26FC3279C8A5")) ISmartRenameI
 {
 public:
     IFACEMETHOD(get_path)(_Outptr_ PWSTR* path) = 0;
-    IFACEMETHOD(put_path)(_In_ PCWSTR path) = 0;
+    IFACEMETHOD(get_shellItem)(_Outptr_ IShellItem** ppsi) = 0;
     IFACEMETHOD(get_originalName)(_Outptr_ PWSTR* originalName) = 0;
     IFACEMETHOD(get_newName)(_Outptr_ PWSTR* newName) = 0;
     IFACEMETHOD(put_newName)(_In_ PCWSTR newName) = 0;
@@ -50,13 +50,14 @@ public:
     IFACEMETHOD(get_id)(_Out_ int *id) = 0;
     IFACEMETHOD(get_iconIndex)(_Out_ int* iconIndex) = 0;
     IFACEMETHOD(get_depth)(_Out_ UINT* depth) = 0;
+    IFACEMETHOD(put_depth)(_In_ int depth) = 0;
     IFACEMETHOD(Reset)() = 0;
 };
 
 interface __declspec(uuid("{26CBFFD9-13B3-424E-BAC9-D12B0539149C}")) ISmartRenameItemFactory : public IUnknown
 {
 public:
-    IFACEMETHOD(Create)(_COM_Outptr_ ISmartRenameItem** ppItem) = 0;
+    IFACEMETHOD(Create)(_In_ IShellItem* psi, _COM_Outptr_ ISmartRenameItem** ppItem) = 0;
 };
 
 interface __declspec(uuid("87FC43F9-7634-43D9-99A5-20876AFCE4AD")) ISmartRenameManagerEvents : public IUnknown

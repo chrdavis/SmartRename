@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "SmartRenameItem.h"
+#include "helpers.h"
 
 int CSmartRenameItem::s_id = 0;
 
@@ -32,28 +33,22 @@ IFACEMETHODIMP CSmartRenameItem::QueryInterface(_In_ REFIID riid, _Outptr_ void*
 IFACEMETHODIMP CSmartRenameItem::get_path(_Outptr_ PWSTR* path)
 {
     CSRWSharedAutoLock lock(&m_lock);
-    HRESULT hr = m_fullPath ? S_OK : E_FAIL;
+    HRESULT hr = m_spsi ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
     {
-        *path = StrDup(m_fullPath);
-        hr = (*path) ? S_OK : E_OUTOFMEMORY;
+        hr = m_spsi->GetDisplayName(SIGDN_FILESYSPATH, path);
     }
     return hr;
 }
 
-IFACEMETHODIMP CSmartRenameItem::put_path(_In_ PCWSTR path)
+IFACEMETHODIMP CSmartRenameItem::get_shellItem(_Outptr_ IShellItem** ppsi)
 {
+    ppsi = nullptr;
     CSRWSharedAutoLock lock(&m_lock);
-    HRESULT hr = (path && wcslen(path) > 0) ? S_OK : E_INVALIDARG;
+    HRESULT hr = (m_spsi) ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
     {
-        CoTaskMemFree(m_fullPath);
-        m_fullPath = StrDup(path);
-        hr = m_fullPath ? S_OK : E_OUTOFMEMORY;
-        if (SUCCEEDED(hr))
-        {
-            hr = _GetOriginalNameFromFullPath();
-        }
+        hr = m_spsi->QueryInterface(IID_PPV_ARGS(ppsi));
     }
     return hr;
 }
@@ -61,11 +56,10 @@ IFACEMETHODIMP CSmartRenameItem::put_path(_In_ PCWSTR path)
 IFACEMETHODIMP CSmartRenameItem::get_originalName(_Outptr_ PWSTR* originalName)
 {
     CSRWSharedAutoLock lock(&m_lock);
-    HRESULT hr = m_originalName ? S_OK : E_FAIL;
+    HRESULT hr = m_spsi ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
     {
-        *originalName = StrDup(m_originalName);
-        hr = (*originalName) ? S_OK : E_OUTOFMEMORY;
+        hr = m_spsi->GetDisplayName(SIGDN_NORMALDISPLAY, originalName);
     }
     return hr;
 }
@@ -150,6 +144,12 @@ IFACEMETHODIMP CSmartRenameItem::get_depth(_Out_ UINT* depth)
     return S_OK;
 }
 
+IFACEMETHODIMP CSmartRenameItem::put_depth(_In_ int depth)
+{
+    m_depth = depth;
+    return S_OK;
+}
+
 IFACEMETHODIMP CSmartRenameItem::Reset()
 {
     CSRWSharedAutoLock lock(&m_lock);
@@ -159,15 +159,24 @@ IFACEMETHODIMP CSmartRenameItem::Reset()
     return S_OK;
 }
 
-HRESULT CSmartRenameItem::s_CreateInstance(_Outptr_ ISmartRenameItem** renameItem)
+HRESULT CSmartRenameItem::s_CreateInstance(_In_opt_ IShellItem* psi, _In_ REFIID iid, _Outptr_ void** resultInterface)
 {
-    *renameItem = nullptr;
+    *resultInterface = nullptr;
 
     CSmartRenameItem *newRenameItem = new CSmartRenameItem();
     HRESULT hr = newRenameItem ? S_OK : E_OUTOFMEMORY;
     if (SUCCEEDED(hr))
     {
-        hr = newRenameItem->QueryInterface(IID_PPV_ARGS(renameItem));
+        if (psi != nullptr)
+        {
+            hr = newRenameItem->_Init(psi);
+        }
+
+        if (SUCCEEDED(hr))
+        {
+            hr = newRenameItem->QueryInterface(iid, resultInterface);
+        }
+
         newRenameItem->Release();
     }
     return hr;
@@ -181,24 +190,29 @@ CSmartRenameItem::CSmartRenameItem() :
 
 CSmartRenameItem::~CSmartRenameItem()
 {
-    CoTaskMemFree(m_fullPath);
-    CoTaskMemFree(m_originalName);
     CoTaskMemFree(m_newName);
 }
 
-void CSmartRenameItem::_SetIsFolder(_In_ bool isFolder)
+HRESULT CSmartRenameItem::_Init(_In_ IShellItem* psi)
 {
-    m_isFolder = isFolder;
-}
-
-HRESULT CSmartRenameItem::_GetOriginalNameFromFullPath()
-{
-    CoTaskMemFree(m_originalName);
-    m_originalName = nullptr;
-    PWSTR fileName = PathFindFileName(m_fullPath);
-    if (fileName != nullptr)
+    HRESULT hr = psi->QueryInterface(IID_PPV_ARGS(&m_spsi));
+    if (SUCCEEDED(hr))
     {
-        m_originalName = StrDup(fileName);
+        PWSTR path = nullptr;
+        if (SUCCEEDED(get_path(&path)))
+        {
+            GetIconIndexFromPath(path, &m_iconIndex);
+            CoTaskMemFree(path);
+        }
+
+        // Check if we are a folder now so we can check this attribute quickly later
+        SFGAOF att = 0;
+        if (SUCCEEDED(m_spsi->GetAttributes(SFGAO_STREAM | SFGAO_FOLDER, &att)))
+        {
+            // Some items can be both folders and streams (ex: zip folders).
+            m_isFolder = (att & SFGAO_FOLDER) && !(att & SFGAO_STREAM);
+        }
     }
-    return m_originalName ? S_OK : E_OUTOFMEMORY;;
+
+    return hr;
 }

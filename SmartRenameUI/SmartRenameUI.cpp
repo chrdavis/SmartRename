@@ -1,12 +1,9 @@
-// SmartRename.cpp : Defines the entry point for the application.
-//
-
-
 #include "stdafx.h"
 #include "resource.h"
 #include "SmartRenameUI.h"
 #include <commctrl.h>
 #include <Shlobj.h>
+#include <helpers.h>
 
 extern HINSTANCE g_hInst;
 
@@ -28,7 +25,7 @@ HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt
     HRESULT hr = prui ? S_OK : E_OUTOFMEMORY;
     if (SUCCEEDED(hr))
     {
-        // Pass the ISmartRenameManager to the SmartRenameView so it can subscribe to events
+        // Pass the ISmartRenameManager to the ISmartRenameUI so it can subscribe to events
         hr = prui->_Initialize(psrm, pdo);
         if (SUCCEEDED(hr))
         {
@@ -109,6 +106,59 @@ IFACEMETHODIMP CSmartRenameUI::OnRenameCompleted()
     return S_OK;
 }
 
+
+// IDropTarget
+IFACEMETHODIMP CSmartRenameUI::DragEnter(_In_ IDataObject* pdtobj, DWORD /* grfKeyState */, POINTL pt, _Out_ DWORD* pdwEffect)
+{
+    if (m_spdth)
+    {
+        POINT ptT = { pt.x, pt.y };
+        m_spdth->DragEnter(m_hwnd, pdtobj, &ptT, *pdwEffect);
+    }
+
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameUI::DragOver(DWORD /* grfKeyState */, POINTL pt, _Out_ DWORD* pdwEffect)
+{
+    if (m_spdth)
+    {
+        POINT ptT = { pt.x, pt.y };
+        m_spdth->DragOver(&ptT, *pdwEffect);
+    }
+
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameUI::DragLeave()
+{
+    if (m_spdth)
+    {
+        m_spdth->DragLeave();
+    }
+
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameUI::Drop(_In_ IDataObject* pdtobj, DWORD, POINTL pt, _Out_ DWORD* pdwEffect)
+{
+    if (m_spdth)
+    {
+        POINT ptT = { pt.x, pt.y };
+        m_spdth->Drop(pdtobj, &ptT, *pdwEffect);
+    }
+
+    _OnClear();
+
+    EnableWindow(GetDlgItem(m_hwnd, ID_RENAME), TRUE);
+    EnableWindow(m_hwndLV, TRUE);
+
+    // Enumerate the data object and popuplate the manager
+    EnumerateDataObject(pdtobj, m_spsrm);
+
+    return S_OK;
+}
+
 HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo)
 {
     // Cache the smart rename manager
@@ -117,9 +167,13 @@ HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDa
     // Cache the data object for enumeration later
     m_spdo = pdo;
 
-    // Subscribe to smart rename manager events
-    HRESULT hr = m_spsrm->Advise(this, &m_cookie);
-    
+    HRESULT hr = CoCreateInstance(CLSID_DragDropHelper, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&m_spdth));
+    if (SUCCEEDED(hr))
+    {
+        // Subscribe to smart rename manager events
+        hr = m_spsrm->Advise(this, &m_cookie);
+    }
+
     if (FAILED(hr))
     {
         //_Cleanup();
@@ -202,32 +256,6 @@ void CSmartRenameUI::_OnClear()
     //_ToggleContent(TRUE);
 }
 
-void CSmartRenameUI::_OnInitDlg()
-{
-    // Initialize from stored settings
-    _ReadSettings();
-
-    // Load the main icon
-    /*if (SUCCEEDED(CGraphicsHelper::LoadIconFromModule(g_hInst, IDI_RENAME, 32, 32, &m_iconMain)))
-    {
-        // Convert the icon to a bitmap
-        if (SUCCEEDED(CGraphicsHelper::HBITMAPFromHICON(m_iconMain, &m_BitmapMain)))
-        {
-            // Set the bitmap as the contents of the control on our dialog
-            HGDIOBJ hgdiOld = (HGDIOBJ)SendDlgItemMessage(m_hwnd, IDC_MAIN_IMAGE, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)_hBitmapMain);
-            if (hgdiOld)
-            {
-                DeleteObject(hgdiOld);  // if there was an old one clean it up
-            }
-        }
-        // Update the icon associated with our main app window
-        SendMessage(m_hwnd, WM_SETICON, (WPARAM)ICON_SMALL, (LPARAM)m_iconMain);
-        SendMessage(m_hwnd, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)m_iconMain);
-    }*/
-
-    m_initialized = true;
-}
-
 void CSmartRenameUI::_OnCloseDlg()
 {
     // Persist the current settings
@@ -284,6 +312,46 @@ INT_PTR CSmartRenameUI::_DlgProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
     return bRet;
 }
 
+void CSmartRenameUI::_OnInitDlg()
+{
+    // Initialize from stored settings
+    _ReadSettings();
+
+    m_hwndLV = GetDlgItem(m_hwnd, IDC_LIST_PREVIEW);
+
+    m_listview.Init(m_hwndLV);
+
+    if (m_spdo)
+    {
+        EnumerateDataObject(m_spdo, m_spsrm);
+    }
+
+    // Load the main icon
+    /*if (SUCCEEDED(CGraphicsHelper::LoadIconFromModule(g_hInst, IDI_RENAME, 32, 32, &m_iconMain)))
+    {
+        // Convert the icon to a bitmap
+        if (SUCCEEDED(CGraphicsHelper::HBITMAPFromHICON(m_iconMain, &m_BitmapMain)))
+        {
+            // Set the bitmap as the contents of the control on our dialog
+            HGDIOBJ hgdiOld = (HGDIOBJ)SendDlgItemMessage(m_hwnd, IDC_MAIN_IMAGE, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)_hBitmapMain);
+            if (hgdiOld)
+            {
+                DeleteObject(hgdiOld);  // if there was an old one clean it up
+            }
+        }
+        // Update the icon associated with our main app window
+        SendMessage(m_hwnd, WM_SETICON, (WPARAM)ICON_SMALL, (LPARAM)m_iconMain);
+        SendMessage(m_hwnd, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)m_iconMain);
+    }*/
+
+    RegisterDragDrop(m_hwnd, this);
+
+    // Disable until items added
+    EnableWindow(m_hwndLV, FALSE);
+
+    m_initialized = true;
+}
+
 void CSmartRenameUI::_OnCommand(_In_ WPARAM wParam, _In_ LPARAM lParam)
 {
     switch (LOWORD(wParam))
@@ -332,7 +400,8 @@ bool CSmartRenameUI::_OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam)
                 ((pnmlv->uNewState & LVIS_STATEIMAGEMASK) != (pnmlv->uOldState & LVIS_STATEIMAGEMASK)) &&
                 (pnmlv->uOldState != 0))
             {
-                //pDlg->_pRenameItemLV->UpdateItemCheckState(pnmlv->iItem);
+                // TODO: will the check state be set on the ISmartRenameItem in the List View class?
+                m_listview.UpdateItemCheckState(pnmlv->iItem);
                 //PostThreadMessage(pDlg->_dwPreviewThreadId, REM_UPDATEITEM, (WPARAM)pnmlv->iItem, 0);
             }
             break;
@@ -347,14 +416,47 @@ bool CSmartRenameUI::_OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam)
     return ret;
 }
 
-CSmartRenameListView::CSmartRenameListView(_In_ HWND hwndLV) :
-    m_hwndLV(hwndLV)
+CSmartRenameListView::CSmartRenameListView()
 {
 }
 
 CSmartRenameListView::~CSmartRenameListView()
 {
     Clear();
+}
+
+HRESULT CSmartRenameListView::Init(_In_ HWND hwndLV)
+{
+    HRESULT hr = E_INVALIDARG;
+
+    if (hwndLV)
+    {
+        m_hwndLV = hwndLV;
+
+        EnableWindow(m_hwndLV, TRUE);
+
+        // Set the standard styles
+        DWORD dwLVStyle = (DWORD)GetWindowLongPtr(m_hwndLV, GWL_STYLE);
+        dwLVStyle |= LVS_ALIGNLEFT | LVS_REPORT | LVS_SHAREIMAGELISTS | LVS_SINGLESEL;
+        SetWindowLongPtr(m_hwndLV, GWL_STYLE, dwLVStyle);
+
+        // Set the extended view styles
+        ListView_SetExtendedListViewStyle(m_hwndLV, LVS_EX_CHECKBOXES);
+
+        // Get the system image lists.  Our list view is setup to not destroy
+        // these since the image list belongs to the entire explorer process
+        HIMAGELIST himlLarge;
+        HIMAGELIST himlSmall;
+        if (Shell_GetImageLists(&himlLarge, &himlSmall))
+        {
+            ListView_SetImageList(m_hwndLV, himlSmall, LVSIL_SMALL);
+            ListView_SetImageList(m_hwndLV, himlLarge, LVSIL_NORMAL);
+        }
+
+        hr = _UpdateColumns();
+    }
+
+    return hr;
 }
 
 HRESULT CSmartRenameListView::ToggleAll(_In_ bool selected)
@@ -420,37 +522,6 @@ HRESULT CSmartRenameListView::GetItemByIndex(_In_ int nIndex, _Out_ ISmartRename
                 hr = S_OK;
             }
         }
-    }
-
-    return hr;
-}
-HRESULT CSmartRenameListView::Init()
-{
-    HRESULT hr = E_INVALIDARG;
-
-    if (m_hwndLV)
-    {
-        EnableWindow(m_hwndLV, TRUE);
-
-        // Set the standard styles
-        DWORD dwLVStyle = (DWORD)GetWindowLongPtr(m_hwndLV, GWL_STYLE);
-        dwLVStyle |= LVS_ALIGNLEFT | LVS_REPORT | LVS_SHAREIMAGELISTS | LVS_SINGLESEL;
-        SetWindowLongPtr(m_hwndLV, GWL_STYLE, dwLVStyle);
-
-        // Set the extended view styles
-        ListView_SetExtendedListViewStyle(m_hwndLV, LVS_EX_CHECKBOXES);
-
-        // Get the system image lists.  Our list view is setup to not destroy
-        // these since the image list belongs to the entire explorer process
-        HIMAGELIST himlLarge;
-        HIMAGELIST himlSmall;
-        if (Shell_GetImageLists(&himlLarge, &himlSmall))
-        {
-            ListView_SetImageList(m_hwndLV, himlSmall, LVSIL_SMALL);
-            ListView_SetImageList(m_hwndLV, himlLarge, LVSIL_NORMAL);
-        }
-
-        hr = _UpdateColumns();
     }
 
     return hr;

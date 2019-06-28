@@ -5,10 +5,10 @@ class CSmartRenameListView
 {
 
 public:
-    CSmartRenameListView(_In_ HWND hwndLV);
+    CSmartRenameListView();
     ~CSmartRenameListView();
 
-    HRESULT Init();
+    HRESULT Init(_In_ HWND hwndLV);
     HRESULT Clear();
     HRESULT UpdateItems(_In_ ISmartRenameManager* psrm);
     HRESULT InsertItem(_In_ ISmartRenameItem* pItem);
@@ -33,6 +33,7 @@ private:
 };
 
 class CSmartRenameUI :
+    public IDropTarget,
     public ISmartRenameUI,
     public ISmartRenameManagerEvents
 {
@@ -40,6 +41,7 @@ public:
     CSmartRenameUI() :
         m_refCount(1)
     {
+        (void)OleInitialize(nullptr);
     }
 
     // IUnknown
@@ -49,6 +51,7 @@ public:
         {
             QITABENT(CSmartRenameUI, ISmartRenameUI),
             QITABENT(CSmartRenameUI, ISmartRenameManagerEvents),
+            QITABENT(CSmartRenameUI, IDropTarget),
             { 0 },
         };
         return QISearch(this, qit, riid, ppv);
@@ -86,12 +89,19 @@ public:
     IFACEMETHODIMP OnRenameStarted();
     IFACEMETHODIMP OnRenameCompleted();
 
+    // IDropTarget
+    IFACEMETHODIMP DragEnter(_In_ IDataObject* pdtobj, DWORD grfKeyState, POINTL pt, _Out_ DWORD* pdwEffect);
+    IFACEMETHODIMP DragOver(DWORD grfKeyState, POINTL pt, _Out_ DWORD* pdwEffect);
+    IFACEMETHODIMP DragLeave();
+    IFACEMETHODIMP Drop(_In_ IDataObject* pdtobj, DWORD grfKeyState, POINTL pt, _Out_ DWORD* pdwEffect);
+
     static HRESULT s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _Outptr_ ISmartRenameUI** ppsrui);
 
 private:
     ~CSmartRenameUI()
     {
         DeleteObject(m_iconMain);
+        OleUninitialize();
     }
 
     HRESULT _DoModal(__in_opt HWND hwnd);
@@ -131,4 +141,6 @@ private:
     DWORD m_cookie = 0;
     CComPtr<ISmartRenameManager> m_spsrm;
     CComPtr<IDataObject> m_spdo;
+    CComPtr<IDropTargetHelper> m_spdth;
+    CSmartRenameListView m_listview;
 };

@@ -41,7 +41,7 @@ public:
     }
 
     // IClassFactory methods
-    IFACEMETHODIMP CreateInstance(_In_opt_ IUnknown *punkOuter, _In_ REFIID riid, _COM_Outptr_ void** ppv)
+    IFACEMETHODIMP CreateInstance(_In_opt_ IUnknown *punkOuter, _In_ REFIID riid, _Outptr_ void** ppv)
     {
         *ppv = NULL;
         HRESULT hr;
@@ -104,7 +104,8 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, void*)
 //
 // Checks if there are any external references to this module
 //
-STDAPI DllCanUnloadNow()
+__control_entrypoint(DllExport)
+STDAPI DllCanUnloadNow(void)
 {
     return (g_dwModuleRefCount == 0) ? S_OK : S_FALSE;
 }
@@ -112,7 +113,8 @@ STDAPI DllCanUnloadNow()
 //
 // DLL export for creating COM objects
 //
-STDAPI DllGetClassObject(_In_ REFCLSID clsid, _In_ REFIID riid, _COM_Outptr_ void **ppv)
+_Check_return_
+STDAPI DllGetClassObject(_In_ REFCLSID clsid, _In_ REFIID riid, _Outptr_ void **ppv)
 {
     *ppv = NULL;
     HRESULT hr = E_OUTOFMEMORY;
@@ -125,11 +127,13 @@ STDAPI DllGetClassObject(_In_ REFCLSID clsid, _In_ REFIID riid, _COM_Outptr_ voi
     return hr;
 }
 
+__control_entrypoint(DllExport)
 STDAPI DllRegisterServer()
 {
     return S_OK;
 }
 
+__control_entrypoint(DllExport)
 STDAPI DllUnregisterServer()
 {
     return S_OK;

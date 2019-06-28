@@ -1,6 +1,5 @@
 #pragma once
 #include "stdafx.h"
-#include "SmartRenameInterfaces.h"
 #include <vector>
 #include "srwlock.h"
 

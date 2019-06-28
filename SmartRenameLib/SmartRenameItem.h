@@ -15,7 +15,7 @@ public:
 
     // ISmartRenameItem
     IFACEMETHODIMP get_path(_Outptr_ PWSTR* path);
-    IFACEMETHODIMP put_path(_In_ PCWSTR path);
+    IFACEMETHODIMP get_shellItem(_Outptr_ IShellItem** ppsi);
     IFACEMETHODIMP get_originalName(_Outptr_ PWSTR* originalName);
     IFACEMETHODIMP put_newName(_In_ PCWSTR newName);
     IFACEMETHODIMP get_newName(_Outptr_ PWSTR* newName);
@@ -28,37 +28,36 @@ public:
     IFACEMETHODIMP get_id(_Out_ int* id);
     IFACEMETHODIMP get_iconIndex(_Out_ int* iconIndex);
     IFACEMETHODIMP get_depth(_Out_ UINT* depth);
+    IFACEMETHODIMP put_depth(_In_ int depth);
     IFACEMETHODIMP Reset();
 
     // ISmartRenameItemFactory
-    IFACEMETHODIMP Create(_Outptr_ ISmartRenameItem** ppItem)
+    IFACEMETHODIMP Create(_In_ IShellItem* psi, _Outptr_ ISmartRenameItem** ppItem)
     {
-        return CSmartRenameItem::s_CreateInstance(ppItem);
+        return CSmartRenameItem::s_CreateInstance(psi, IID_PPV_ARGS(ppItem));
     }
 
 public:
-    static HRESULT s_CreateInstance(_Outptr_ ISmartRenameItem** renameItem);
+    static HRESULT s_CreateInstance(_In_opt_ IShellItem* psi, _In_ REFIID iid, _Outptr_ void** resultInterface);
 
 private:
     static int s_id;
     CSmartRenameItem();
     ~CSmartRenameItem();
 
-    void    _SetIsFolder(_In_ bool isFolder);
-    HRESULT _GetOriginalNameFromFullPath();
+    HRESULT _Init(_In_ IShellItem* psi);
 
 private:
     bool     m_isDirty = false;
-    bool     m_isFolder = false;
     bool     m_isSubFolderContent = false;
     bool     m_shouldRename = true;
+    bool     m_isFolder = false;
     int      m_id = -1;
     int      m_iconIndex = -1;
     UINT     m_depth = 0;
     HRESULT  m_error = S_OK;
-    PWSTR    m_originalName = nullptr;
-    PWSTR    m_fullPath = nullptr;
     PWSTR    m_newName = nullptr;
     CSRWLock m_lock;
     long     m_refCount = 0;
+    CComPtr<IShellItem> m_spsi;
 };

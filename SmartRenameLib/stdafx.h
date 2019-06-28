@@ -14,3 +14,7 @@
 #include <atlbase.h>
 #include <strsafe.h>
 #include <pathcch.h>
+#include <shobjidl.h>
+#include <shellapi.h>
+
+#include "SmartRenameInterfaces.h"
