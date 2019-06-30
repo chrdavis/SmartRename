@@ -90,10 +90,10 @@ public:
     IFACEMETHODIMP OnRenameCompleted();
 
     // IDropTarget
-    IFACEMETHODIMP DragEnter(_In_ IDataObject* pdtobj, DWORD grfKeyState, POINTL pt, _Out_ DWORD* pdwEffect);
-    IFACEMETHODIMP DragOver(DWORD grfKeyState, POINTL pt, _Out_ DWORD* pdwEffect);
+    IFACEMETHODIMP DragEnter(_In_ IDataObject* pdtobj, DWORD grfKeyState, POINTL pt, _Inout_ DWORD* pdwEffect);
+    IFACEMETHODIMP DragOver(DWORD grfKeyState, POINTL pt, _Inout_ DWORD* pdwEffect);
     IFACEMETHODIMP DragLeave();
-    IFACEMETHODIMP Drop(_In_ IDataObject* pdtobj, DWORD grfKeyState, POINTL pt, _Out_ DWORD* pdwEffect);
+    IFACEMETHODIMP Drop(_In_ IDataObject* pdtobj, DWORD grfKeyState, POINTL pt, _Inout_ DWORD* pdwEffect);
 
     static HRESULT s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _Outptr_ ISmartRenameUI** ppsrui);
 

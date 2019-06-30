@@ -66,9 +66,9 @@ IFACEMETHODIMP CSmartRenameUI::get_showUI(_Out_ bool* showUI)
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameUI::OnItemAdded(_In_ ISmartRenameItem*)
+IFACEMETHODIMP CSmartRenameUI::OnItemAdded(_In_ ISmartRenameItem* pItem)
 {
-    return S_OK;
+    return m_listview.InsertItem(pItem);
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnUpdate(_In_ ISmartRenameItem*)
@@ -108,7 +108,7 @@ IFACEMETHODIMP CSmartRenameUI::OnRenameCompleted()
 
 
 // IDropTarget
-IFACEMETHODIMP CSmartRenameUI::DragEnter(_In_ IDataObject* pdtobj, DWORD /* grfKeyState */, POINTL pt, _Out_ DWORD* pdwEffect)
+IFACEMETHODIMP CSmartRenameUI::DragEnter(_In_ IDataObject* pdtobj, DWORD /* grfKeyState */, POINTL pt, _Inout_ DWORD* pdwEffect)
 {
     if (m_spdth)
     {
@@ -119,7 +119,7 @@ IFACEMETHODIMP CSmartRenameUI::DragEnter(_In_ IDataObject* pdtobj, DWORD /* grfK
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameUI::DragOver(DWORD /* grfKeyState */, POINTL pt, _Out_ DWORD* pdwEffect)
+IFACEMETHODIMP CSmartRenameUI::DragOver(DWORD /* grfKeyState */, POINTL pt, _Inout_ DWORD* pdwEffect)
 {
     if (m_spdth)
     {
@@ -140,7 +140,7 @@ IFACEMETHODIMP CSmartRenameUI::DragLeave()
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameUI::Drop(_In_ IDataObject* pdtobj, DWORD, POINTL pt, _Out_ DWORD* pdwEffect)
+IFACEMETHODIMP CSmartRenameUI::Drop(_In_ IDataObject* pdtobj, DWORD, POINTL pt, _Inout_ DWORD* pdwEffect)
 {
     if (m_spdth)
     {
@@ -326,6 +326,8 @@ void CSmartRenameUI::_OnInitDlg()
         EnumerateDataObject(m_spdo, m_spsrm);
     }
 
+    // TODO: Add dialog icon, image and description to top of dialog?
+
     // Load the main icon
     /*if (SUCCEEDED(CGraphicsHelper::LoadIconFromModule(g_hInst, IDI_RENAME, 32, 32, &m_iconMain)))
     {
@@ -344,6 +346,7 @@ void CSmartRenameUI::_OnInitDlg()
         SendMessage(m_hwnd, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)m_iconMain);
     }*/
 
+    // TODO: put this behind a setting?
     RegisterDragDrop(m_hwnd, this);
 
     // Disable until items added
@@ -504,6 +507,7 @@ HRESULT CSmartRenameListView::UpdateItemCheckState(_In_ int iItem)
     return hr;
 }
 
+// TODO: LPARAM should store id of item instead of pointer to interface
 HRESULT CSmartRenameListView::GetItemByIndex(_In_ int nIndex, _Out_ ISmartRenameItem** ppItem)
 {
     *ppItem = nullptr;

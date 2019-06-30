@@ -56,7 +56,7 @@ HRESULT _ParseEnumItems(_In_ IEnumShellItems* pesi, _In_ ISmartRenameManager* ps
                     {
                         // Bind to the IShellItem for the IEnumShellItems interface
                         CComPtr<IEnumShellItems> spesiNext;
-                        hr = spsi->BindToHandler(NULL, BHID_EnumItems, IID_PPV_ARGS(&spesiNext));
+                        hr = spsi->BindToHandler(nullptr, BHID_EnumItems, IID_PPV_ARGS(&spesiNext));
                         if (SUCCEEDED(hr))
                         {
                             // Parse the folder contents recursively
