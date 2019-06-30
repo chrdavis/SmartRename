@@ -404,7 +404,7 @@ bool CSmartRenameUI::_OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam)
                 (pnmlv->uOldState != 0))
             {
                 // TODO: will the check state be set on the ISmartRenameItem in the List View class?
-                m_listview.UpdateItemCheckState(pnmlv->iItem);
+                m_listview.UpdateItemCheckState(m_spsrm, pnmlv->iItem);
                 //PostThreadMessage(pDlg->_dwPreviewThreadId, REM_UPDATEITEM, (WPARAM)pnmlv->iItem, 0);
             }
             break;
@@ -480,14 +480,14 @@ HRESULT CSmartRenameListView::ToggleAll(_In_ bool selected)
     return hr;
 }
 
-HRESULT CSmartRenameListView::UpdateItemCheckState(_In_ int iItem)
+HRESULT CSmartRenameListView::UpdateItemCheckState(_In_ ISmartRenameManager* psrm, _In_ int iItem)
 {
     HRESULT hr = E_INVALIDARG;
 
     if ((m_hwndLV) && (iItem > -1))
     {
         CComPtr<ISmartRenameItem> spItem;
-        hr = GetItemByIndex(iItem, &spItem);
+        hr = GetItemByIndex(psrm, iItem, &spItem);
         if (SUCCEEDED(hr))
         {
             bool checked = ListView_GetCheckState(m_hwndLV, iItem);
@@ -508,7 +508,7 @@ HRESULT CSmartRenameListView::UpdateItemCheckState(_In_ int iItem)
 }
 
 // TODO: LPARAM should store id of item instead of pointer to interface
-HRESULT CSmartRenameListView::GetItemByIndex(_In_ int nIndex, _Out_ ISmartRenameItem** ppItem)
+HRESULT CSmartRenameListView::GetItemByIndex(_In_ ISmartRenameManager* psrm, _In_ int nIndex, _Out_ ISmartRenameItem** ppItem)
 {
     *ppItem = nullptr;
     HRESULT hr = E_FAIL;
@@ -520,11 +520,8 @@ HRESULT CSmartRenameListView::GetItemByIndex(_In_ int nIndex, _Out_ ISmartRename
         lvItem.mask = LVIF_PARAM;
         if (ListView_GetItem(m_hwndLV, &lvItem))
         {
-            *ppItem = reinterpret_cast<ISmartRenameItem*>(lvItem.lParam);
-            if (*ppItem)
-            {
-                hr = S_OK;
-            }
+            int id = static_cast<int>(lvItem.lParam);
+            hr = psrm->GetItemById(id, ppItem);
         }
     }
 
@@ -567,7 +564,9 @@ HRESULT CSmartRenameListView::InsertItem(_In_ ISmartRenameItem* pItem)
         LVITEM lvitemNew = { 0 };
 
         lvitemNew.mask = LVIF_IMAGE | LVIF_PARAM | LVIF_INDENT;
-        lvitemNew.lParam = (LPARAM)pItem;
+        int id = -1;
+        pItem->get_id(&id);
+        lvitemNew.lParam = (LPARAM)id;
         lvitemNew.iItem = iCount + 1;
         pItem->get_iconIndex(&lvitemNew.iImage);
         UINT depth = 0;
@@ -598,7 +597,9 @@ HRESULT CSmartRenameListView::UpdateItem(_In_ ISmartRenameItem* pItem)
     {
         // Find the item in the list view
         int iIndex = -1;
-        hr = _FindItemByParam((LPARAM)pItem, &iIndex);
+        int id = -1;
+        pItem->get_id(&id);
+        hr = _FindItemByParam((LPARAM)id, &iIndex);
         if ((SUCCEEDED(hr)) && (iIndex != -1))
         {
             // Insert the client settings in the correct columns (if the column is visible)
@@ -617,7 +618,9 @@ HRESULT CSmartRenameListView::RemoveItem(_In_ ISmartRenameItem* pItem)
     {
         // Find the item in the list view
         int iIndex = -1;
-        hr = _FindItemByParam((LPARAM)pItem, &iIndex);
+        int id = -1;
+        pItem->get_id(&id);
+        hr = _FindItemByParam((LPARAM)id, &iIndex);
         if ((SUCCEEDED(hr)) && (iIndex != -1))
         {
             // Remove the item

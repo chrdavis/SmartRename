@@ -15,8 +15,8 @@ public:
     HRESULT UpdateItem(_In_ ISmartRenameItem* pItem);
     HRESULT RemoveItem(_In_ ISmartRenameItem* pItem);
     HRESULT ToggleAll(_In_ bool selected);
-    HRESULT UpdateItemCheckState(_In_ int iItem);
-    HRESULT GetItemByIndex(_In_ int nIndex, _Out_ ISmartRenameItem** ppItem);
+    HRESULT UpdateItemCheckState(_In_ ISmartRenameManager* psrm, _In_ int iItem);
+    HRESULT GetItemByIndex(_In_ ISmartRenameManager* psrm, _In_ int nIndex, _Out_ ISmartRenameItem** ppItem);
     HWND GetHWND() { return m_hwndLV; }
 
 private:
