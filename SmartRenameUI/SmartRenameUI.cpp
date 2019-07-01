@@ -4,8 +4,24 @@
 #include <commctrl.h>
 #include <Shlobj.h>
 #include <helpers.h>
+#include <windowsx.h>
 
 extern HINSTANCE g_hInst;
+
+
+int g_rgnMatchModeResIDs[] =
+{
+    IDS_ENTIREITEMNAME,
+    IDS_NAMEONLY,
+    IDS_EXTENSIONONLY
+};
+
+enum
+{
+    MATCHMODE_FULLNAME = 0,
+    MATCHMODE_NAMEONLY,
+    MATCHMODE_EXTENIONONLY
+};
 
 HRESULT CSmartRenameUI::_DoModal(__in_opt HWND hwnd)
 {
@@ -172,6 +188,14 @@ HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDa
     {
         // Subscribe to smart rename manager events
         hr = m_spsrm->Advise(this, &m_cookie);
+    }
+
+    // Add combo box entries
+    for (int i = 0; i < ARRAYSIZE(g_rgnMatchModeResIDs); i++)
+    {
+        wchar_t comboBoxString[100] = { 0 };
+        LoadString(g_hInst, g_rgnMatchModeResIDs[i], comboBoxString, ARRAYSIZE(comboBoxString));
+        ComboBox_AddString(GetDlgItem(m_hwnd, IDC_COMBO_RENAMEOPTYPE), comboBoxString);
     }
 
     if (FAILED(hr))
@@ -357,16 +381,23 @@ void CSmartRenameUI::_OnInitDlg()
 
 void CSmartRenameUI::_OnCommand(_In_ WPARAM wParam, _In_ LPARAM lParam)
 {
-    switch (LOWORD(wParam))
+    if (HIWORD(wParam) == CBN_SELENDOK)
     {
-    case IDOK:
-    case IDCANCEL:
-        _OnCloseDlg();
-        break;
+        // TODO: process new selection in combo box
+    }
+    else
+    {
+        switch (LOWORD(wParam))
+        {
+        case IDOK:
+        case IDCANCEL:
+            _OnCloseDlg();
+            break;
 
-    case ID_RENAME:
-        _OnRename();
-        break;
+        case ID_RENAME:
+            _OnRename();
+            break;
+        }
     }
 }
 
@@ -389,7 +420,7 @@ bool CSmartRenameUI::_OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam)
         case LVN_GETEMPTYMARKUP:
             pnmMarkup = (NMLVEMPTYMARKUP*)lParam;
             pnmMarkup->dwFlags = EMF_CENTERED;
-            //LoadString(g_hInst, IDS_LISTVIEW_EMPTY, pnmMarkup->szMarkup, ARRAYSIZE(pnmMarkup->szMarkup));
+            LoadString(g_hInst, IDS_LISTVIEW_EMPTY, pnmMarkup->szMarkup, ARRAYSIZE(pnmMarkup->szMarkup));
             ret = true;
             break;
 
