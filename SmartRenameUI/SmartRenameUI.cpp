@@ -87,8 +87,9 @@ IFACEMETHODIMP CSmartRenameUI::OnItemAdded(_In_ ISmartRenameItem* pItem)
     return m_listview.InsertItem(pItem);
 }
 
-IFACEMETHODIMP CSmartRenameUI::OnUpdate(_In_ ISmartRenameItem*)
+IFACEMETHODIMP CSmartRenameUI::OnUpdate(_In_ ISmartRenameItem* pItem)
 {
+    m_listview.UpdateItem(pItem);
     return S_OK;
 }
 
@@ -99,26 +100,31 @@ IFACEMETHODIMP CSmartRenameUI::OnError(_In_ ISmartRenameItem*)
 
 IFACEMETHODIMP CSmartRenameUI::OnRegExStarted()
 {
+    // Disable list view
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnRegExCanceled()
 {
+    // Enable list view
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnRegExCompleted()
 {
+    // Enable list view
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnRenameStarted()
 {
+    // Disable controls
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnRenameCompleted()
 {
+    // Enable controls
     return S_OK;
 }
 
@@ -188,14 +194,6 @@ HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDa
     {
         // Subscribe to smart rename manager events
         hr = m_spsrm->Advise(this, &m_cookie);
-    }
-
-    // Add combo box entries
-    for (int i = 0; i < ARRAYSIZE(g_rgnMatchModeResIDs); i++)
-    {
-        wchar_t comboBoxString[100] = { 0 };
-        LoadString(g_hInst, g_rgnMatchModeResIDs[i], comboBoxString, ARRAYSIZE(comboBoxString));
-        ComboBox_AddString(GetDlgItem(m_hwnd, IDC_COMBO_RENAMEOPTYPE), comboBoxString);
     }
 
     if (FAILED(hr))
@@ -345,6 +343,18 @@ void CSmartRenameUI::_OnInitDlg()
 
     m_listview.Init(m_hwndLV);
 
+    // Add combo box entries
+    for (int i = 0; i < ARRAYSIZE(g_rgnMatchModeResIDs); i++)
+    {
+        wchar_t comboBoxString[100] = { 0 };
+        LoadString(g_hInst, g_rgnMatchModeResIDs[i], comboBoxString, ARRAYSIZE(comboBoxString));
+        ComboBox_InsertString(GetDlgItem(m_hwnd, IDC_COMBO_RENAMEOPTYPE), -1, comboBoxString);
+        if (i == 0)
+        {
+            ComboBox_SetCurSel(GetDlgItem(m_hwnd, IDC_COMBO_RENAMEOPTYPE), 0);
+        }
+    }
+
     if (m_spdo)
     {
         EnumerateDataObject(m_spdo, m_spsrm);
@@ -374,7 +384,7 @@ void CSmartRenameUI::_OnInitDlg()
     RegisterDragDrop(m_hwnd, this);
 
     // Disable until items added
-    EnableWindow(m_hwndLV, FALSE);
+    //EnableWindow(m_hwndLV, FALSE);
 
     m_initialized = true;
 }
@@ -397,13 +407,21 @@ void CSmartRenameUI::_OnCommand(_In_ WPARAM wParam, _In_ LPARAM lParam)
         case ID_RENAME:
             _OnRename();
             break;
+
+        case IDC_EDIT_REPLACEWITH:
+        case IDC_EDIT_SEARCHFOR:
+            if (GET_WM_COMMAND_CMD(wParam, lParam) == EN_CHANGE)
+            {
+                _OnSearchReplaceChanged();
+            }
+            break;
         }
     }
 }
 
-bool CSmartRenameUI::_OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam)
+BOOL CSmartRenameUI::_OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam)
 {
-    bool ret = false;
+    bool ret = FALSE;
     LPNMHDR          pnmdr = (LPNMHDR)lParam;
     LPNMLISTVIEW     pnmlv = (LPNMLISTVIEW)pnmdr;
     NMLVEMPTYMARKUP* pnmMarkup = NULL;
@@ -421,11 +439,11 @@ bool CSmartRenameUI::_OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam)
             pnmMarkup = (NMLVEMPTYMARKUP*)lParam;
             pnmMarkup->dwFlags = EMF_CENTERED;
             LoadString(g_hInst, IDS_LISTVIEW_EMPTY, pnmMarkup->szMarkup, ARRAYSIZE(pnmMarkup->szMarkup));
-            ret = true;
+            ret = TRUE;
             break;
 
         case LVN_BEGINLABELEDIT:
-            ret = true;
+            ret = TRUE;
             break;
 
         case LVN_ITEMCHANGED:
@@ -441,13 +459,31 @@ bool CSmartRenameUI::_OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam)
             break;
 
         case NM_DBLCLK:
-            checked = ListView_GetCheckState(m_hwndLV, pnmlv->iItem);
-            ListView_SetCheckState(m_hwndLV, pnmlv->iItem, !checked);
-            break;
+            {
+                BOOL checked = ListView_GetCheckState(m_hwndLV, pnmlv->iItem);
+                ListView_SetCheckState(m_hwndLV, pnmlv->iItem, !checked);
+                break;
+            }
         }
     }
 
     return ret;
+}
+
+void CSmartRenameUI::_OnSearchReplaceChanged()
+{
+    // Pass updated search and replace terms to the ISmartRenameRegEx handler
+    CComPtr<ISmartRenameRegEx> spRegEx;
+    if (SUCCEEDED(m_spsrm->get_smartRenameRegEx(&spRegEx)))
+    {
+        wchar_t buffer[MAX_PATH] = { 0 };
+        GetDlgItemText(m_hwnd, IDC_EDIT_SEARCHFOR, buffer, ARRAYSIZE(buffer));
+        spRegEx->put_searchTerm(buffer);
+
+        buffer[0] = L'\0';
+        GetDlgItemText(m_hwnd, IDC_EDIT_REPLACEWITH, buffer, ARRAYSIZE(buffer));
+        spRegEx->put_replaceTerm(buffer);
+    }
 }
 
 CSmartRenameListView::CSmartRenameListView()
@@ -475,7 +511,7 @@ HRESULT CSmartRenameListView::Init(_In_ HWND hwndLV)
         SetWindowLongPtr(m_hwndLV, GWL_STYLE, dwLVStyle);
 
         // Set the extended view styles
-        ListView_SetExtendedListViewStyle(m_hwndLV, LVS_EX_CHECKBOXES);
+        ListView_SetExtendedListViewStyle(m_hwndLV, LVS_EX_CHECKBOXES | LVS_EX_DOUBLEBUFFER);
 
         // Get the system image lists.  Our list view is setup to not destroy
         // these since the image list belongs to the entire explorer process

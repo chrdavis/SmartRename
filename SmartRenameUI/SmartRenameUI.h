@@ -120,7 +120,7 @@ private:
 
     INT_PTR _DlgProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
     void _OnCommand(_In_ WPARAM wParam, _In_ LPARAM lParam);
-    bool _OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam);
+    BOOL _OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam);
 
     HRESULT _Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo);
 
@@ -129,6 +129,7 @@ private:
     void _OnCloseDlg();
     void _OnDestroyDlg();
     void _OnClear();
+    void _OnSearchReplaceChanged();
 
     HRESULT _ReadSettings();
     HRESULT _WriteSettings();

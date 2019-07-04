@@ -32,54 +32,66 @@ IFACEMETHODIMP CSmartRenameItem::QueryInterface(_In_ REFIID riid, _Outptr_ void*
 
 IFACEMETHODIMP CSmartRenameItem::get_path(_Outptr_ PWSTR* path)
 {
+    *path = nullptr;
     CSRWSharedAutoLock lock(&m_lock);
-    HRESULT hr = m_spsi ? S_OK : E_FAIL;
+    HRESULT hr = m_path ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
     {
-        hr = m_spsi->GetDisplayName(SIGDN_FILESYSPATH, path);
+        hr = SHStrDup(m_path, path);
+    }
+    return hr;
+}
+
+IFACEMETHODIMP CSmartRenameItem::get_parentPath(_Outptr_ PWSTR* parentPath)
+{
+    *parentPath = nullptr;
+    CSRWSharedAutoLock lock(&m_lock);
+    HRESULT hr = m_parentPath ? S_OK : E_FAIL;
+    if (SUCCEEDED(hr))
+    {
+        hr = SHStrDup(m_parentPath, parentPath);
     }
     return hr;
 }
 
 IFACEMETHODIMP CSmartRenameItem::get_shellItem(_Outptr_ IShellItem** ppsi)
 {
-    ppsi = nullptr;
-    CSRWSharedAutoLock lock(&m_lock);
-    HRESULT hr = (m_spsi) ? S_OK : E_FAIL;
-    if (SUCCEEDED(hr))
-    {
-        hr = m_spsi->QueryInterface(IID_PPV_ARGS(ppsi));
-    }
-    return hr;
+    return SHCreateItemFromParsingName(m_path, nullptr, IID_PPV_ARGS(ppsi));
 }
 
 IFACEMETHODIMP CSmartRenameItem::get_originalName(_Outptr_ PWSTR* originalName)
 {
     CSRWSharedAutoLock lock(&m_lock);
-    HRESULT hr = m_spsi ? S_OK : E_FAIL;
+    HRESULT hr = m_originalName ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
     {
-        hr = m_spsi->GetDisplayName(SIGDN_NORMALDISPLAY, originalName);
+        hr = SHStrDup(m_originalName, originalName);
     }
     return hr;
 }
 
-IFACEMETHODIMP CSmartRenameItem::put_newName(_In_ PCWSTR newName)
+IFACEMETHODIMP CSmartRenameItem::put_newName(_In_opt_ PCWSTR newName)
 {
     CSRWSharedAutoLock lock(&m_lock);
     CoTaskMemFree(m_newName);
-    m_newName = StrDup(newName);
-    return m_newName ? S_OK : E_OUTOFMEMORY;
+    m_newName = nullptr;
+    HRESULT hr = S_OK;
+    if (newName != nullptr)
+    {
+        hr = SHStrDup(newName, &m_newName);
+    }
+    return hr;
 }
 
 IFACEMETHODIMP CSmartRenameItem::get_newName(_Outptr_ PWSTR* newName)
 {
+    // TODO: check if new name is different than current name?  If so then store it and set a bit saying we will be renamed
+    // TODO: If null then clear it
     CSRWSharedAutoLock lock(&m_lock);
     HRESULT hr = m_newName ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
     {
-        *newName = StrDup(m_newName);
-        hr = (*newName) ? S_OK : E_OUTOFMEMORY;
+        hr = SHStrDup(m_newName, newName);
     }
     return hr;
 }
@@ -105,6 +117,7 @@ IFACEMETHODIMP CSmartRenameItem::put_isSubFolderContent(_In_ bool isSubFolderCon
     return S_OK;
 }
 
+// TODO: Rename isDirty to something else?
 IFACEMETHODIMP CSmartRenameItem::get_isDirty(_Out_ bool* isDirty)
 {
     CSRWSharedAutoLock lock(&m_lock);
@@ -190,27 +203,42 @@ CSmartRenameItem::CSmartRenameItem() :
 
 CSmartRenameItem::~CSmartRenameItem()
 {
+    CoTaskMemFree(m_path);
     CoTaskMemFree(m_newName);
+    CoTaskMemFree(m_originalName);
+    CoTaskMemFree(m_parentPath);
 }
 
 HRESULT CSmartRenameItem::_Init(_In_ IShellItem* psi)
 {
-    HRESULT hr = psi->QueryInterface(IID_PPV_ARGS(&m_spsi));
+    // Get the full filesystem path from the shell item
+    HRESULT hr = psi->GetDisplayName(SIGDN_FILESYSPATH, &m_path);
     if (SUCCEEDED(hr))
     {
-        PWSTR path = nullptr;
-        if (SUCCEEDED(get_path(&path)))
+        hr = psi->GetDisplayName(SIGDN_NORMALDISPLAY, &m_originalName);
+        if (SUCCEEDED(hr))
         {
-            GetIconIndexFromPath(path, &m_iconIndex);
-            CoTaskMemFree(path);
+            // Init icon index
+            GetIconIndexFromPath((PCWSTR)m_path, &m_iconIndex);
+
+            // Check if we are a folder now so we can check this attribute quickly later
+            SFGAOF att = 0;
+            hr = psi->GetAttributes(SFGAO_STREAM | SFGAO_FOLDER, &att);
+            if (SUCCEEDED(hr))
+            {
+                // Some items can be both folders and streams (ex: zip folders).
+                m_isFolder = (att & SFGAO_FOLDER) && !(att & SFGAO_STREAM);
+            }
         }
 
-        // Check if we are a folder now so we can check this attribute quickly later
-        SFGAOF att = 0;
-        if (SUCCEEDED(m_spsi->GetAttributes(SFGAO_STREAM | SFGAO_FOLDER, &att)))
+        if (SUCCEEDED(hr))
         {
-            // Some items can be both folders and streams (ex: zip folders).
-            m_isFolder = (att & SFGAO_FOLDER) && !(att & SFGAO_STREAM);
+            CComPtr<IShellItem> spParent;
+            hr = psi->GetParent(&spParent);
+            if (SUCCEEDED(hr))
+            {
+                hr = spParent->GetDisplayName(SIGDN_FILESYSPATH, &m_parentPath);
+            }
         }
     }
 

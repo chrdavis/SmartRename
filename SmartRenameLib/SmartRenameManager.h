@@ -58,14 +58,16 @@ private:
     void _ClearEventHandlers();
     void _ClearSmartRenameItems();
 
-    bool _PathIsDotOrDotDot(_In_ PCWSTR path);
-    bool _EnumeratePath(_In_ PCWSTR path, _In_ UINT depth);
-
     HRESULT _PerformRegExRename();
     HRESULT _PerformFileOperation();
 
     HRESULT _CreateRegExWorkerThread();
+    void _CancelRegExWorkerThread();
     HRESULT _CreateFileOpWorkerThread();
+
+    HRESULT _EnsureRegEx();
+    HRESULT _InitRegEx();
+    void _ClearRegEx();
 
     // Thread proc for performing the regex rename of each item
     static DWORD WINAPI s_regexWorkerThread(_In_ void* pv);
@@ -87,6 +89,7 @@ private:
     DWORD m_flags = 0;
 
     DWORD m_cookie = 0;
+    DWORD m_regExAdviseCookie = 0;
 
     struct SMART_RENAME_MGR_EVENT
     {

@@ -72,11 +72,11 @@ IFACEMETHODIMP CSmartRenameRegEx::UnAdvise(_In_ DWORD cookie)
 
 IFACEMETHODIMP CSmartRenameRegEx::get_searchTerm(_Outptr_ PWSTR* searchTerm)
 {
-    CSRWSharedAutoLock lock(&m_lock);
     *searchTerm = nullptr;
     HRESULT hr = m_searchTerm ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
     {
+        CSRWSharedAutoLock lock(&m_lock);
         hr = SHStrDup(m_searchTerm, searchTerm);
     }
     return hr;
@@ -84,30 +84,32 @@ IFACEMETHODIMP CSmartRenameRegEx::get_searchTerm(_Outptr_ PWSTR* searchTerm)
 
 IFACEMETHODIMP CSmartRenameRegEx::put_searchTerm(_In_ PCWSTR searchTerm)
 {
-    CSRWExclusiveAutoLock lock(&m_lock);
     HRESULT hr = searchTerm ? S_OK : E_INVALIDARG;
     if (SUCCEEDED(hr))
     {
+        CSRWExclusiveAutoLock lock(&m_lock);
         if (m_searchTerm == nullptr || lstrcmp(searchTerm, m_searchTerm) != 0)
         {
             CoTaskMemFree(m_searchTerm);
             hr = SHStrDup(searchTerm, &m_searchTerm);
-            if (SUCCEEDED(hr))
-            {
-                _OnSearchTermChanged();
-            }
         }
     }
+
+    if (SUCCEEDED(hr))
+    {
+        _OnSearchTermChanged();
+    }
+
     return hr;
 }
 
 IFACEMETHODIMP CSmartRenameRegEx::get_replaceTerm(_Outptr_ PWSTR* replaceTerm)
 {
-    CSRWSharedAutoLock lock(&m_lock);
     *replaceTerm = nullptr;
     HRESULT hr = m_replaceTerm ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
     {
+        CSRWSharedAutoLock lock(&m_lock);
         hr = SHStrDup(m_replaceTerm, replaceTerm);
     }
     return hr;
@@ -115,20 +117,23 @@ IFACEMETHODIMP CSmartRenameRegEx::get_replaceTerm(_Outptr_ PWSTR* replaceTerm)
 
 IFACEMETHODIMP CSmartRenameRegEx::put_replaceTerm(_In_ PCWSTR replaceTerm)
 {
-    CSRWExclusiveAutoLock lock(&m_lock);
     HRESULT hr = replaceTerm ? S_OK : E_INVALIDARG;
     if (SUCCEEDED(hr))
     {
+
+        CSRWExclusiveAutoLock lock(&m_lock);
         if (m_replaceTerm == nullptr || lstrcmp(replaceTerm, m_replaceTerm) != 0)
         {
             CoTaskMemFree(m_replaceTerm);
             hr = SHStrDup(replaceTerm, &m_replaceTerm);
-            if (SUCCEEDED(hr))
-            {
-                _OnReplaceTermChanged();
-            }
         }
     }
+
+    if (SUCCEEDED(hr))
+    {
+        _OnReplaceTermChanged();
+    }
+
     return hr;
 }
 
@@ -181,8 +186,9 @@ HRESULT CSmartRenameRegEx::Replace(_In_ PCWSTR source, _Outptr_ PWSTR* result)
         wstring res = source;
         try
         {
-            res = regex_replace(wstring(source), wregex(wstring(m_searchTerm)), m_replaceTerm ? wstring(m_replaceTerm) : wstring(L""));
-             *result = StrDup(res.c_str());
+            wregex pattern(m_searchTerm, (!(m_flags & CaseSensitive)) ? regex_constants::icase | regex_constants::ECMAScript : regex_constants::ECMAScript);
+            res = regex_replace(wstring(source), pattern, m_replaceTerm ? wstring(m_replaceTerm) : wstring(L""));
+            *result = StrDup(res.c_str());
             hr = (*result) ? S_OK : E_OUTOFMEMORY;
         }
         catch (regex_error e)
@@ -195,7 +201,7 @@ HRESULT CSmartRenameRegEx::Replace(_In_ PCWSTR source, _Outptr_ PWSTR* result)
 
 void CSmartRenameRegEx::_OnSearchTermChanged()
 {
-    CSRWExclusiveAutoLock lock(&m_lockEvents);
+    CSRWSharedAutoLock lock(&m_lockEvents);
 
     for (std::vector<SMART_RENAME_REGEX_EVENT>::iterator it = m_smartRenameRegExEvents.begin(); it != m_smartRenameRegExEvents.end(); ++it)
     {
@@ -208,7 +214,7 @@ void CSmartRenameRegEx::_OnSearchTermChanged()
 
 void CSmartRenameRegEx::_OnReplaceTermChanged()
 {
-    CSRWExclusiveAutoLock lock(&m_lockEvents);
+    CSRWSharedAutoLock lock(&m_lockEvents);
 
     for (std::vector<SMART_RENAME_REGEX_EVENT>::iterator it = m_smartRenameRegExEvents.begin(); it != m_smartRenameRegExEvents.end(); ++it)
     {
