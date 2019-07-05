@@ -148,6 +148,7 @@ IFACEMETHODIMP CSmartRenameRegEx::put_flags(_In_ DWORD flags)
     if (m_flags != flags)
     {
         m_flags = flags;
+        _OnFlagsChanged();
     }
     return S_OK;
 }
@@ -221,6 +222,19 @@ void CSmartRenameRegEx::_OnReplaceTermChanged()
         if (it->pEvents)
         {
             it->pEvents->OnReplaceTermChanged(m_replaceTerm);
+        }
+    }
+}
+
+void CSmartRenameRegEx::_OnFlagsChanged()
+{
+    CSRWSharedAutoLock lock(&m_lockEvents);
+
+    for (std::vector<SMART_RENAME_REGEX_EVENT>::iterator it = m_smartRenameRegExEvents.begin(); it != m_smartRenameRegExEvents.end(); ++it)
+    {
+        if (it->pEvents)
+        {
+            it->pEvents->OnFlagsChanged(m_flags);
         }
     }
 }

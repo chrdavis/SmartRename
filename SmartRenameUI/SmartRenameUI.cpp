@@ -23,6 +23,23 @@ enum
     MATCHMODE_EXTENIONONLY
 };
 
+struct FlagCheckboxMap
+{
+    DWORD flag;
+    DWORD id;
+};
+
+FlagCheckboxMap g_flagCheckboxMap[] =
+{
+    { UseRegularExpressions, IDC_CHECK_USEREGEX },
+    { ExcludeSubfolders, IDC_CHECK_EXCLUDESUBFOLDERS},
+    { EnumerateItems, IDC_CHECK_ENUMITEMS},
+    { ExcludeFiles, IDC_CHECK_EXCLUDEFILES},
+    { CaseSensitive, IDC_CHECK_CASESENSITIVE},
+    { MatchAllOccurences, IDC_CHECK_MATCHALLOCCRENCES},
+    { ExcludeFolders, IDC_CHECK_EXCLUDEFOLDERS}
+};
+
 HRESULT CSmartRenameUI::_DoModal(__in_opt HWND hwnd)
 {
     HRESULT hr = S_OK;
@@ -84,12 +101,15 @@ IFACEMETHODIMP CSmartRenameUI::get_showUI(_Out_ bool* showUI)
 
 IFACEMETHODIMP CSmartRenameUI::OnItemAdded(_In_ ISmartRenameItem* pItem)
 {
-    return m_listview.InsertItem(pItem);
+    m_listview.InsertItem(pItem);
+    _UpdateCountsLabel();
+    return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnUpdate(_In_ ISmartRenameItem* pItem)
 {
     m_listview.UpdateItem(pItem);
+    _UpdateCountsLabel();
     return S_OK;
 }
 
@@ -101,18 +121,21 @@ IFACEMETHODIMP CSmartRenameUI::OnError(_In_ ISmartRenameItem*)
 IFACEMETHODIMP CSmartRenameUI::OnRegExStarted()
 {
     // Disable list view
+    _UpdateCountsLabel();
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnRegExCanceled()
 {
     // Enable list view
+    _UpdateCountsLabel();
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnRegExCompleted()
 {
     // Enable list view
+    _UpdateCountsLabel();
     return S_OK;
 }
 
@@ -343,16 +366,12 @@ void CSmartRenameUI::_OnInitDlg()
 
     m_listview.Init(m_hwndLV);
 
-    // Add combo box entries
-    for (int i = 0; i < ARRAYSIZE(g_rgnMatchModeResIDs); i++)
+    // Initialize checkboxes
+    if (m_spsrm)
     {
-        wchar_t comboBoxString[100] = { 0 };
-        LoadString(g_hInst, g_rgnMatchModeResIDs[i], comboBoxString, ARRAYSIZE(comboBoxString));
-        ComboBox_InsertString(GetDlgItem(m_hwnd, IDC_COMBO_RENAMEOPTYPE), -1, comboBoxString);
-        if (i == 0)
-        {
-            ComboBox_SetCurSel(GetDlgItem(m_hwnd, IDC_COMBO_RENAMEOPTYPE), 0);
-        }
+        DWORD flags = 0;
+        m_spsrm->get_flags(&flags);
+        _SetCheckboxesFromFlags(flags);
     }
 
     if (m_spdo)
@@ -391,31 +410,37 @@ void CSmartRenameUI::_OnInitDlg()
 
 void CSmartRenameUI::_OnCommand(_In_ WPARAM wParam, _In_ LPARAM lParam)
 {
-    if (HIWORD(wParam) == CBN_SELENDOK)
+    switch (LOWORD(wParam))
     {
-        // TODO: process new selection in combo box
-    }
-    else
-    {
-        switch (LOWORD(wParam))
+    case IDOK:
+    case IDCANCEL:
+        _OnCloseDlg();
+        break;
+
+    case ID_RENAME:
+        _OnRename();
+        break;
+
+    case IDC_EDIT_REPLACEWITH:
+    case IDC_EDIT_SEARCHFOR:
+        if (GET_WM_COMMAND_CMD(wParam, lParam) == EN_CHANGE)
         {
-        case IDOK:
-        case IDCANCEL:
-            _OnCloseDlg();
-            break;
-
-        case ID_RENAME:
-            _OnRename();
-            break;
-
-        case IDC_EDIT_REPLACEWITH:
-        case IDC_EDIT_SEARCHFOR:
-            if (GET_WM_COMMAND_CMD(wParam, lParam) == EN_CHANGE)
-            {
-                _OnSearchReplaceChanged();
-            }
-            break;
+            _OnSearchReplaceChanged();
         }
+        break;
+
+    case IDC_CHECK_CASESENSITIVE:
+    case IDC_CHECK_ENUMITEMS:
+    case IDC_CHECK_EXCLUDEFILES:
+    case IDC_CHECK_EXCLUDEFOLDERS:
+    case IDC_CHECK_EXCLUDESUBFOLDERS:
+    case IDC_CHECK_MATCHALLOCCRENCES:
+    case IDC_CHECK_USEREGEX:
+        if (BN_CLICKED == HIWORD(wParam))
+        {
+            _GetFlagsFromCheckboxes();
+        }
+        break;
     }
 }
 
@@ -452,9 +477,7 @@ BOOL CSmartRenameUI::_OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam)
                 ((pnmlv->uNewState & LVIS_STATEIMAGEMASK) != (pnmlv->uOldState & LVIS_STATEIMAGEMASK)) &&
                 (pnmlv->uOldState != 0))
             {
-                // TODO: will the check state be set on the ISmartRenameItem in the List View class?
                 m_listview.UpdateItemCheckState(m_spsrm, pnmlv->iItem);
-                //PostThreadMessage(pDlg->_dwPreviewThreadId, REM_UPDATEITEM, (WPARAM)pnmlv->iItem, 0);
             }
             break;
 
@@ -484,6 +507,52 @@ void CSmartRenameUI::_OnSearchReplaceChanged()
         GetDlgItemText(m_hwnd, IDC_EDIT_REPLACEWITH, buffer, ARRAYSIZE(buffer));
         spRegEx->put_replaceTerm(buffer);
     }
+}
+
+DWORD CSmartRenameUI::_GetFlagsFromCheckboxes()
+{
+    DWORD flags = 0;
+    for (int i = 0; i < ARRAYSIZE(g_flagCheckboxMap); i++)
+    {
+        if (Button_GetCheck(GetDlgItem(m_hwnd, g_flagCheckboxMap[i].id)) == BST_CHECKED)
+        {
+            flags |= g_flagCheckboxMap[i].flag;
+        }
+    }
+
+    // Ensure we update flags
+    if (m_spsrm)
+    {
+        m_spsrm->put_flags(flags);
+    }
+
+    return flags;
+}
+
+void CSmartRenameUI::_SetCheckboxesFromFlags(_In_ DWORD flags)
+{
+    for (int i = 0; i < ARRAYSIZE(g_flagCheckboxMap); i++)
+    {
+        Button_SetCheck(GetDlgItem(m_hwnd, g_flagCheckboxMap[i].id), flags & g_flagCheckboxMap[i].flag);
+    }
+}
+
+void CSmartRenameUI::_UpdateCountsLabel()
+{
+    wchar_t countsLabelFormat[100] = { 0 };
+    LoadString(g_hInst, IDS_COUNTSLABELFMT, countsLabelFormat, ARRAYSIZE(countsLabelFormat));
+
+    UINT selectedCount = 0;
+    UINT renamingCount = 0;
+    if (m_spsrm)
+    {
+        m_spsrm->GetSelectedItemCount(&selectedCount);
+        m_spsrm->GetRenameItemCount(&renamingCount);
+    }
+
+    wchar_t countsLabel[100] = { 0 };
+    StringCchPrintf(countsLabel, ARRAYSIZE(countsLabel), countsLabelFormat, selectedCount, renamingCount);
+    SetDlgItemText(m_hwnd, IDC_STATUS_MESSAGE, countsLabel);
 }
 
 CSmartRenameListView::CSmartRenameListView()
@@ -567,7 +636,7 @@ HRESULT CSmartRenameListView::UpdateItemCheckState(_In_ ISmartRenameManager* psr
         // Get the total number of list items and compare it to what is selected
         // We need to update the column checkbox if all items are selected or if
         // not all of the items are selected.
-        bool checkHeader = (ListView_GetSelectedCount(m_hwndLV) == (UINT)ListView_GetItemCount(m_hwndLV));
+        bool checkHeader = (ListView_GetSelectedCount(m_hwndLV) == ListView_GetItemCount(m_hwndLV));
         _UpdateHeaderCheckState(checkHeader);
     }
 

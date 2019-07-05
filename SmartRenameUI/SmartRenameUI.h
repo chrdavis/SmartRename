@@ -134,6 +134,11 @@ private:
     HRESULT _ReadSettings();
     HRESULT _WriteSettings();
 
+    DWORD _GetFlagsFromCheckboxes();
+    void _SetCheckboxesFromFlags(_In_ DWORD flags);
+
+    void _UpdateCountsLabel();
+
     long m_refCount = 0;
     bool m_initialized = false;
     HWND m_hwnd = nullptr;

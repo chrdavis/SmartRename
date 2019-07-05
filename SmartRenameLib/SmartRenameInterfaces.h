@@ -19,6 +19,7 @@ interface __declspec(uuid("3ECBA62B-E0F0-4472-AA2E-DEE7A1AA46B9")) ISmartRenameR
 public:
     IFACEMETHOD(OnSearchTermChanged)(_In_ PCWSTR searchTerm) = 0;
     IFACEMETHOD(OnReplaceTermChanged)(_In_ PCWSTR replaceTerm) = 0;
+    IFACEMETHOD(OnFlagsChanged)(_In_ DWORD flags) = 0;
 };
 
 interface __declspec(uuid("E3ED45B5-9CE0-47E2-A595-67EB950B9B72")) ISmartRenameRegEx : public IUnknown
@@ -90,6 +91,8 @@ public:
     IFACEMETHOD(GetItemByIndex)(_In_ UINT index, _COM_Outptr_ ISmartRenameItem** ppItem) = 0;
     IFACEMETHOD(GetItemById)(_In_ int id, _COM_Outptr_ ISmartRenameItem** ppItem) = 0;
     IFACEMETHOD(GetItemCount)(_Out_ UINT* count) = 0;
+    IFACEMETHOD(GetSelectedItemCount)(_Out_ UINT* count) = 0;
+    IFACEMETHOD(GetRenameItemCount)(_Out_ UINT* count) = 0;
     IFACEMETHOD(get_flags)(_Out_ DWORD* flags) = 0;
     IFACEMETHOD(put_flags)(_In_ DWORD flags) = 0;
     IFACEMETHOD(get_smartRenameRegEx)(_COM_Outptr_ ISmartRenameRegEx** ppRegEx) = 0;

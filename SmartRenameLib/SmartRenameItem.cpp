@@ -138,6 +138,7 @@ IFACEMETHODIMP CSmartRenameItem::put_shouldRename(_In_ bool shouldRename)
     m_shouldRename = shouldRename;
     return S_OK;
 }
+
 IFACEMETHODIMP CSmartRenameItem::get_id(_Out_ int* id)
 {
     CSRWSharedAutoLock lock(&m_lock);
@@ -233,6 +234,7 @@ HRESULT CSmartRenameItem::_Init(_In_ IShellItem* psi)
 
         if (SUCCEEDED(hr))
         {
+            // Get the parent path
             CComPtr<IShellItem> spParent;
             hr = psi->GetParent(&spParent);
             if (SUCCEEDED(hr))

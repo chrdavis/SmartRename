@@ -2,6 +2,8 @@
 #include <vector>
 #include "srwlock.h"
 
+#define DEFAULT_SMART_RENAME_FLAGS 0
+
 class CSmartRenameManager :
     public ISmartRenameManager,
     public ISmartRenameRegExEvents
@@ -24,6 +26,8 @@ public:
     IFACEMETHODIMP GetItemByIndex(_In_ UINT index, _COM_Outptr_ ISmartRenameItem** ppItem);
     IFACEMETHODIMP GetItemById(_In_ int id, _COM_Outptr_ ISmartRenameItem** ppItem);
     IFACEMETHODIMP GetItemCount(_Out_ UINT* count);
+    IFACEMETHODIMP GetSelectedItemCount(_Out_ UINT* count);
+    IFACEMETHODIMP GetRenameItemCount(_Out_ UINT* count);
     IFACEMETHODIMP get_flags(_Out_ DWORD* flags);
     IFACEMETHODIMP put_flags(_In_ DWORD flags);
     IFACEMETHODIMP get_smartRenameRegEx(_COM_Outptr_ ISmartRenameRegEx** ppRegEx);
@@ -34,6 +38,7 @@ public:
     // ISmartRenameRegExEvents
     IFACEMETHODIMP OnSearchTermChanged(_In_ PCWSTR searchTerm);
     IFACEMETHODIMP OnReplaceTermChanged(_In_ PCWSTR replaceTerm);
+    IFACEMETHODIMP OnFlagsChanged(_In_ DWORD flags);
 
     static HRESULT s_CreateInstance(_Outptr_ ISmartRenameManager** ppsrm);
 
@@ -86,7 +91,7 @@ private:
     CSRWLock m_lockEvents;
     CSRWLock m_lockItems;
 
-    DWORD m_flags = 0;
+    DWORD m_flags = DEFAULT_SMART_RENAME_FLAGS;
 
     DWORD m_cookie = 0;
     DWORD m_regExAdviseCookie = 0;

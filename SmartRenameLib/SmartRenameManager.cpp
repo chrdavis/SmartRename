@@ -160,6 +160,38 @@ IFACEMETHODIMP CSmartRenameManager::GetItemCount(_Out_ UINT* count)
     return S_OK;
 }
 
+IFACEMETHODIMP CSmartRenameManager::GetSelectedItemCount(_Out_ UINT* count)
+{
+    *count = 0;
+    CSRWSharedAutoLock lock(&m_lockItems);
+    auto isSelected = [count](_In_ ISmartRenameItem* currentItem)
+    {
+        bool selected = false;
+        if (SUCCEEDED(currentItem->get_shouldRename(&selected)) && selected)
+        {
+            (*count)++;
+        }
+    };
+    std::for_each(m_smartRenameItems.begin(), m_smartRenameItems.end(), isSelected);
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameManager::GetRenameItemCount(_Out_ UINT* count)
+{
+    *count = 0;
+    CSRWSharedAutoLock lock(&m_lockItems);
+    DWORD flags = m_flags;
+    auto willRename = [count, flags](_In_ ISmartRenameItem* currentItem)
+    {
+        if (_ShouldRenameItem(currentItem, flags))
+        {
+            (*count)++;
+        }
+    };
+    std::for_each(m_smartRenameItems.begin(), m_smartRenameItems.end(), willRename);
+    return S_OK;
+}
+
 IFACEMETHODIMP CSmartRenameManager::get_flags(_Out_ DWORD* flags)
 {
     *flags = m_flags;
@@ -224,6 +256,15 @@ IFACEMETHODIMP CSmartRenameManager::OnSearchTermChanged(_In_ PCWSTR /*searchTerm
 
 IFACEMETHODIMP CSmartRenameManager::OnReplaceTermChanged(_In_ PCWSTR /*replaceTerm*/)
 {
+    _CancelRegExWorkerThread();
+    _PerformRegExRename();
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameManager::OnFlagsChanged(_In_ DWORD flags)
+{
+    // Flags were updated in the smart rename regex.  Update our preview.
+    m_flags = flags;
     _CancelRegExWorkerThread();
     _PerformRegExRename();
     return S_OK;
@@ -585,8 +626,16 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
                                         spItem->get_parentPath(&parentPath);
 
                                         // Make a unique name with a counter
-                                        PathMakeUniqueName(uniqueName, ARRAYSIZE(uniqueName), newName, newName, parentPath);
-                                        newNameToUse = uniqueName;
+                                        if (PathMakeUniqueName(uniqueName, ARRAYSIZE(uniqueName), newName, newName, parentPath))
+                                        {
+                                            // Trim to the last element in the path
+                                            newNameToUse = PathFindFileNameW(uniqueName);
+                                            if (newNameToUse == nullptr)
+                                            {
+                                                uniqueName[0] = L'\0';
+                                                newNameToUse = uniqueName;
+                                            }
+                                        }
 
                                         CoTaskMemFree(parentPath);
                                     }
