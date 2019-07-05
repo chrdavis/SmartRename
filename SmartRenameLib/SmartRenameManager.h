@@ -79,8 +79,6 @@ private:
     // Thread proc for performing the actual file operation that does the file rename
     static DWORD WINAPI s_fileOpWorkerThread(_In_ void* pv);
 
-    static bool _ShouldRenameItem(_In_ ISmartRenameItem* item, _In_ DWORD flags);
-
     HANDLE m_regExWorkerThreadHandle = nullptr;
     HANDLE m_startRegExWorkerEvent = nullptr;
     HANDLE m_cancelRegExWorkerEvent = nullptr;

@@ -24,13 +24,14 @@ public:
     IFACEMETHODIMP get_isSubFolderContent(_Out_ bool* isSubFolderContent);
     IFACEMETHODIMP put_isSubFolderContent(_In_ bool isSubFolderContent);
     IFACEMETHODIMP get_isDirty(_Out_ bool* isDirty);
-    IFACEMETHODIMP get_shouldRename(_Out_ bool* shouldRename);
-    IFACEMETHODIMP put_shouldRename(_In_ bool shouldRename);
+    IFACEMETHODIMP get_selected(_Out_ bool* selected);
+    IFACEMETHODIMP put_selected(_In_ bool selected);
     IFACEMETHODIMP get_id(_Out_ int* id);
     IFACEMETHODIMP get_iconIndex(_Out_ int* iconIndex);
     IFACEMETHODIMP get_depth(_Out_ UINT* depth);
     IFACEMETHODIMP put_depth(_In_ int depth);
     IFACEMETHODIMP Reset();
+    IFACEMETHODIMP ShouldRenameItem(_In_ DWORD flags, _Out_ bool* shouldRename);
 
     // ISmartRenameItemFactory
     IFACEMETHODIMP Create(_In_ IShellItem* psi, _Outptr_ ISmartRenameItem** ppItem)
@@ -51,7 +52,7 @@ private:
 private:
     bool     m_isDirty = false;
     bool     m_isSubFolderContent = false;
-    bool     m_shouldRename = true;
+    bool     m_selected = true;
     bool     m_isFolder = false;
     int      m_id = -1;
     int      m_iconIndex = -1;

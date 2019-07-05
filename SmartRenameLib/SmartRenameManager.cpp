@@ -167,7 +167,7 @@ IFACEMETHODIMP CSmartRenameManager::GetSelectedItemCount(_Out_ UINT* count)
     auto isSelected = [count](_In_ ISmartRenameItem* currentItem)
     {
         bool selected = false;
-        if (SUCCEEDED(currentItem->get_shouldRename(&selected)) && selected)
+        if (SUCCEEDED(currentItem->get_selected(&selected)) && selected)
         {
             (*count)++;
         }
@@ -183,7 +183,8 @@ IFACEMETHODIMP CSmartRenameManager::GetRenameItemCount(_Out_ UINT* count)
     DWORD flags = m_flags;
     auto willRename = [count, flags](_In_ ISmartRenameItem* currentItem)
     {
-        if (_ShouldRenameItem(currentItem, flags))
+        bool shouldRename = false;
+        if (SUCCEEDED(currentItem->ShouldRenameItem(flags, &shouldRename)) && shouldRename)
         {
             (*count)++;
         }
@@ -415,7 +416,8 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(_In_ void* pv)
                             CComPtr<ISmartRenameItem> spItem;
                             if (SUCCEEDED(pwtd->spsrm->GetItemByIndex(u, &spItem)))
                             {
-                                if (_ShouldRenameItem(spItem, flags))
+                                bool shouldRename = false;
+                                if (SUCCEEDED(spItem->ShouldRenameItem(flags, &shouldRename) && shouldRename))
                                 {
                                     // TODO: handle extensions and enumerating items
                                     PWSTR newName = nullptr;
@@ -465,24 +467,6 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(_In_ void* pv)
     }
 
     return 0;
-}
-
-bool CSmartRenameManager::_ShouldRenameItem(_In_ ISmartRenameItem* item, _In_ DWORD flags)
-{
-    // Should we perform a rename on this item given its
-    // state and the options that were set?
-    bool isDirty = false;
-    bool shouldRename = false;
-    bool isFolder = false;
-    bool isSubFolderContent = false;
-    item->get_isDirty(&isDirty);
-    item->get_shouldRename(&shouldRename);
-    item->get_isFolder(&isFolder);
-    item->get_isSubFolderContent(&isSubFolderContent);
-    return (shouldRename && isDirty &&
-        (!(isFolder && (flags & SmartRenameFlags::ExcludeFolders))) &&
-        (!(!isFolder && (flags & SmartRenameFlags::ExcludeFiles))) &&
-        (!isSubFolderContent && (flags & SmartRenameFlags::ExcludeSubfolders)));
 }
 
 HRESULT CSmartRenameManager::_PerformRegExRename()

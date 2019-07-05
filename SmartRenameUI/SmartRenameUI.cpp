@@ -627,7 +627,7 @@ HRESULT CSmartRenameListView::UpdateItemCheckState(_In_ ISmartRenameManager* psr
         if (SUCCEEDED(hr))
         {
             bool checked = ListView_GetCheckState(m_hwndLV, iItem);
-            spItem->put_shouldRename(checked);
+            spItem->put_selected(checked);
 
             UINT uSelected = (checked) ? LVIS_SELECTED : 0;
             ListView_SetItemState(m_hwndLV, iItem, uSelected, LVIS_SELECTED);
@@ -716,9 +716,9 @@ HRESULT CSmartRenameListView::InsertItem(_In_ ISmartRenameItem* pItem)
             hr = _UpdateSubItems(pItem, iNum);
 
             // Set the check state
-            bool shouldRename = false;
-            pItem->get_shouldRename(&shouldRename);
-            ListView_SetCheckState(m_hwndLV, iNum, shouldRename);
+            bool selected = false;
+            pItem->get_selected(&selected);
+            ListView_SetCheckState(m_hwndLV, iNum, selected);
         }
     }
 

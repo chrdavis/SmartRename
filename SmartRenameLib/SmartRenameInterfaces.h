@@ -49,12 +49,13 @@ public:
     IFACEMETHOD(get_isSubFolderContent)(_Out_ bool* isSubFolderContent) = 0;
     IFACEMETHOD(put_isSubFolderContent)(_In_ bool isSubFolderContent) = 0;
     IFACEMETHOD(get_isDirty)(_Out_ bool* isDirty) = 0;
-    IFACEMETHOD(get_shouldRename)(_Out_ bool* shouldRename) = 0;
-    IFACEMETHOD(put_shouldRename)(_In_ bool shouldRename) = 0;
+    IFACEMETHOD(get_selected)(_Out_ bool* selected) = 0;
+    IFACEMETHOD(put_selected)(_In_ bool selected) = 0;
     IFACEMETHOD(get_id)(_Out_ int *id) = 0;
     IFACEMETHOD(get_iconIndex)(_Out_ int* iconIndex) = 0;
     IFACEMETHOD(get_depth)(_Out_ UINT* depth) = 0;
     IFACEMETHOD(put_depth)(_In_ int depth) = 0;
+    IFACEMETHOD(ShouldRenameItem)(_In_ DWORD flags, _Out_ bool* shouldRename) = 0;
     IFACEMETHOD(Reset)() = 0;
 };
 
