@@ -68,6 +68,7 @@ private:
 
     HRESULT _CreateRegExWorkerThread();
     void _CancelRegExWorkerThread();
+    void _WaitForRegExWorkerThread();
     HRESULT _CreateFileOpWorkerThread();
 
     HRESULT _EnsureRegEx();
@@ -78,6 +79,9 @@ private:
     static DWORD WINAPI s_regexWorkerThread(_In_ void* pv);
     // Thread proc for performing the actual file operation that does the file rename
     static DWORD WINAPI s_fileOpWorkerThread(_In_ void* pv);
+
+    static LRESULT CALLBACK s_msgWndProc(_In_ HWND hwnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
+    LRESULT _WndProc(_In_ HWND hwnd, _In_ UINT msg, _In_ WPARAM wParam, _In_ LPARAM lParam);
 
     HANDLE m_regExWorkerThreadHandle = nullptr;
     HANDLE m_startRegExWorkerEvent = nullptr;
@@ -108,6 +112,10 @@ private:
 
     // Parent HWND used by IFileOperation
     HWND m_hwndParent = nullptr;
+
+    HWND m_hwndMessage = nullptr;
+
+    CRITICAL_SECTION m_critsecReentrancy;
 
     long m_refCount;
 };

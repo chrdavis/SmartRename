@@ -35,11 +35,14 @@ int APIENTRY wWinMain(
                 {
                     // Create the smart rename UI instance and pass the manager
                     CComPtr<ISmartRenameUI> spsrui;
-                    if (SUCCEEDED(CSmartRenameUI::s_CreateInstance(spsrm, nullptr, &spsrui)))
+                    if (SUCCEEDED(CSmartRenameUI::s_CreateInstance(spsrm, nullptr, true, &spsrui)))
                     {
                         // Call blocks until we are done
                         spsrui->Show();
                         spsrui->Close();
+
+                        // Need to call shutdown to break circular dependencies
+                        spsrm->Shutdown();
                     }
                 }
             }

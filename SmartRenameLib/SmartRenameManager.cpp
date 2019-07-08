@@ -3,7 +3,7 @@
 #include "SmartRenameRegEx.h" // Default RegEx handler
 #include <algorithm>
 #include <shlobj.h>
-
+#include "helpers.h"
 
 // The default FOF flags to use in the rename operations
 #define FOF_DEFAULTFLAGS (FOF_ALLOWUNDO | FOFX_SHOWELEVATIONPROMPT | FOF_RENAMEONCOLLISION)
@@ -98,6 +98,7 @@ IFACEMETHODIMP CSmartRenameManager::Reset()
 IFACEMETHODIMP CSmartRenameManager::Shutdown()
 {
     _ClearRegEx();
+    _Cleanup();
     return S_OK;
 }
 
@@ -250,14 +251,12 @@ IFACEMETHODIMP CSmartRenameManager::put_smartRenameItemFactory(_In_ ISmartRename
 
 IFACEMETHODIMP CSmartRenameManager::OnSearchTermChanged(_In_ PCWSTR /*searchTerm*/)
 {
-    _CancelRegExWorkerThread();
     _PerformRegExRename();
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameManager::OnReplaceTermChanged(_In_ PCWSTR /*replaceTerm*/)
 {
-    _CancelRegExWorkerThread();
     _PerformRegExRename();
     return S_OK;
 }
@@ -266,7 +265,6 @@ IFACEMETHODIMP CSmartRenameManager::OnFlagsChanged(_In_ DWORD flags)
 {
     // Flags were updated in the smart rename regex.  Update our preview.
     m_flags = flags;
-    _CancelRegExWorkerThread();
     _PerformRegExRename();
     return S_OK;
 }
@@ -291,10 +289,12 @@ HRESULT CSmartRenameManager::s_CreateInstance(_Outptr_ ISmartRenameManager** pps
 CSmartRenameManager::CSmartRenameManager() :
     m_refCount(1)
 {
+    InitializeCriticalSection(&m_critsecReentrancy);
 }
 
 CSmartRenameManager::~CSmartRenameManager()
 {
+    DeleteCriticalSection(&m_critsecReentrancy);
 }
 
 HRESULT CSmartRenameManager::_Init()
@@ -304,6 +304,8 @@ HRESULT CSmartRenameManager::_Init()
     m_startRegExWorkerEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
     m_cancelRegExWorkerEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
 
+    m_hwndMessage = CreateMsgWindow(s_msgWndProc, this);
+
     return S_OK;
 }
 
@@ -311,22 +313,92 @@ HRESULT CSmartRenameManager::_Init()
 enum
 {
     SRM_REGEX_ITEM_UPDATED = (WM_APP + 1),  // Single smart rename item processed by regex worker thread
-    SRM_REGEX_CANCELED,                       // Regex operation was canceled
-    SRM_REGEX_COMPLETE,                       // Regex worker thread completed
-    SRM_FILEOP_COMPLETE                       // File Operation worker thread completed
+    SRM_REGEX_CANCELED,                     // Regex operation was canceled
+    SRM_REGEX_COMPLETE,                     // Regex worker thread completed
+    SRM_FILEOP_COMPLETE                     // File Operation worker thread completed
 };
 
 struct WorkerThreadData
 {
-    DWORD managerThreadId = 0;
+    HWND hwndManager = nullptr;
     HANDLE startEvent = nullptr;
     HANDLE cancelEvent = nullptr;
     HWND hwndParent = nullptr;
     CComPtr<ISmartRenameManager> spsrm;
 };
 
+// Msg-only worker window proc for communication from our worker threads
+LRESULT CALLBACK CSmartRenameManager::s_msgWndProc(_In_ HWND hwnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+    LRESULT lRes = 0;
+
+    CSmartRenameManager* pThis = (CSmartRenameManager*)GetWindowLongPtr(hwnd, 0);
+    if (pThis != nullptr)
+    {
+        lRes = pThis->_WndProc(hwnd, uMsg, wParam, lParam);
+        if (uMsg == WM_NCDESTROY)
+        {
+            SetWindowLongPtr(hwnd, 0, NULL);
+            pThis->m_hwndMessage = nullptr;
+        }
+    }
+    else
+    {
+        lRes = DefWindowProc(hwnd, uMsg, wParam, lParam);
+    }
+
+    return lRes;
+}
+
+LRESULT CSmartRenameManager::_WndProc(_In_ HWND hwnd, _In_ UINT msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+    LRESULT lRes = 0;
+
+    AddRef();
+
+    switch (msg)
+    {
+    case SRM_REGEX_ITEM_UPDATED:
+    {
+        int id = static_cast<int>(lParam);
+        CComPtr<ISmartRenameItem> spItem;
+        if (SUCCEEDED(GetItemById(id, &spItem)))
+        {
+            _OnUpdate(spItem);
+        }
+        break;
+    }
+
+    case SRM_REGEX_CANCELED:
+        _OnRegExCanceled();
+        break;
+
+    case SRM_REGEX_COMPLETE:
+        _OnRegExCompleted();
+        break;
+
+    default:
+        lRes = DefWindowProc(hwnd, msg, wParam, lParam);
+        break;
+    }
+
+    Release();
+
+    return lRes;
+}
+
 HRESULT CSmartRenameManager::_PerformFileOperation()
 {
+    // Do we have items to rename?
+    UINT renameItemCount = 0;
+    if (FAILED(GetRenameItemCount(&renameItemCount)) || renameItemCount == 0)
+    {
+        return E_FAIL;
+    }
+
+    // Wait for any regex thread to finish
+    _WaitForRegExWorkerThread();
+
     // Create worker thread which will perform the actual rename
     HRESULT hr = _CreateFileOpWorkerThread();
     if (SUCCEEDED(hr))
@@ -373,7 +445,7 @@ HRESULT CSmartRenameManager::_CreateFileOpWorkerThread()
     HRESULT hr = pwtd ? S_OK : E_OUTOFMEMORY;
     if (SUCCEEDED(hr))
     {
-        pwtd->managerThreadId = GetCurrentThreadId();
+        pwtd->hwndManager = m_hwndMessage;
         pwtd->startEvent = m_startRegExWorkerEvent;
         pwtd->cancelEvent = nullptr;
         pwtd->spsrm = this;
@@ -417,9 +489,8 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(_In_ void* pv)
                             if (SUCCEEDED(pwtd->spsrm->GetItemByIndex(u, &spItem)))
                             {
                                 bool shouldRename = false;
-                                if (SUCCEEDED(spItem->ShouldRenameItem(flags, &shouldRename) && shouldRename))
+                                if (SUCCEEDED(spItem->ShouldRenameItem(flags, &shouldRename)) && shouldRename)
                                 {
-                                    // TODO: handle extensions and enumerating items
                                     PWSTR newName = nullptr;
                                     if (SUCCEEDED(spItem->get_newName(&newName)))
                                     {
@@ -431,10 +502,6 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(_In_ void* pv)
                                         CoTaskMemFree(newName);
                                     }
                                 }
-
-                                // TODO: WE HAVE NOT RENAMED THIS YET!  WE SHOULD BE USING THE PROGRESS SYNK AND HAVE A MAP FROM PATH TO INDEX OR SOMETHING
-                                // Send the manager thread the item processed message
-                                PostThreadMessage(pwtd->managerThreadId, SRM_REGEX_ITEM_UPDATED, GetCurrentThreadId(), u);
                             }
                         }
 
@@ -459,7 +526,7 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(_In_ void* pv)
             }
 
             // Send the manager thread the completion message
-            PostThreadMessage(pwtd->managerThreadId, SRM_REGEX_COMPLETE, GetCurrentThreadId(), 0);
+            PostMessage(pwtd->hwndManager, SRM_FILEOP_COMPLETE, GetCurrentThreadId(), 0);
 
             delete pwtd;
         }
@@ -471,59 +538,33 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(_In_ void* pv)
 
 HRESULT CSmartRenameManager::_PerformRegExRename()
 {
-    // Create worker thread which will message us progress and completion.
-    HRESULT hr = _CreateRegExWorkerThread();
-    if (SUCCEEDED(hr))
+    HRESULT hr = E_FAIL;
+
+    if (!TryEnterCriticalSection(&m_critsecReentrancy))
     {
-        ResetEvent(m_cancelRegExWorkerEvent);
+        // Ensure we do not renter since we pump messages here.
+        // If we do, post a message back to ourselves
+    }
+    else
+    {
+        // Ensure previous thread is canceled
+        _CancelRegExWorkerThread();
 
-        _OnRegExStarted();
-
-        // Signal the worker thread that they can start working. We needed to wait until we
-        // were ready to process thread messages.
-        SetEvent(m_startRegExWorkerEvent);
-
-        while (true)
+        // Create worker thread which will message us progress and completion.
+        hr = _CreateRegExWorkerThread();
+        if (SUCCEEDED(hr))
         {
-            // Check if worker thread has exited
-            if (WaitForSingleObject(m_regExWorkerThreadHandle, 0) == WAIT_OBJECT_0)
-            {
-                break;
-            }
+            ResetEvent(m_cancelRegExWorkerEvent);
 
-            MSG msg;
-            while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-            {
-                if (msg.message == SRM_REGEX_ITEM_UPDATED)
-                {
-                    int id = static_cast<int>(msg.lParam);
-                    CComPtr<ISmartRenameItem> spItem;
-                    if (SUCCEEDED(GetItemById(id, &spItem)))
-                    {
-                        _OnUpdate(spItem);
-                    }
-                }
-                else if (msg.message == SRM_REGEX_CANCELED)
-                {
-                    _OnRegExCanceled();
-                }
-                else if (msg.message == SRM_REGEX_COMPLETE)
-                {
-                    // Worker thread completed
-                    break;
-                }
-                else
-                {
-                    TranslateMessage(&msg);
-                    DispatchMessage(&msg);
-                }
-            }
+            _OnRegExStarted();
+
+            // Signal the worker thread that they can start working. We needed to wait until we
+            // were ready to process thread messages.
+            SetEvent(m_startRegExWorkerEvent);
         }
-
-        _OnRegExCompleted();
     }
 
-    return 0;
+    return hr;
 }
 
 HRESULT CSmartRenameManager::_CreateRegExWorkerThread()
@@ -532,7 +573,7 @@ HRESULT CSmartRenameManager::_CreateRegExWorkerThread()
     HRESULT hr = pwtd ? S_OK : E_OUTOFMEMORY;
     if (SUCCEEDED(hr))
     {
-        pwtd->managerThreadId = GetCurrentThreadId();
+        pwtd->hwndManager = m_hwndMessage;
         pwtd->startEvent = m_startRegExWorkerEvent;
         pwtd->cancelEvent = m_cancelRegExWorkerEvent;
         pwtd->hwndParent = m_hwndParent;
@@ -573,7 +614,7 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
                         {
                             // Canceled from manager
                             // Send the manager thread the canceled message
-                            PostThreadMessage(pwtd->managerThreadId, SRM_REGEX_CANCELED, GetCurrentThreadId(), 0);
+                            PostMessage(pwtd->hwndManager, SRM_REGEX_CANCELED, GetCurrentThreadId(), 0);
                             break;
                         }
 
@@ -633,7 +674,7 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
                                         if (SUCCEEDED(spItem->get_id(&id)))
                                         {
                                             // Send the manager thread the item processed message
-                                            PostThreadMessage(pwtd->managerThreadId, SRM_REGEX_ITEM_UPDATED, GetCurrentThreadId(), id);
+                                            PostMessage(pwtd->hwndManager, SRM_REGEX_ITEM_UPDATED, GetCurrentThreadId(), id);
                                         }
                                     }
                                 }
@@ -648,7 +689,7 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
             }
 
             // Send the manager thread the completion message
-            PostThreadMessage(pwtd->managerThreadId, SRM_REGEX_COMPLETE, GetCurrentThreadId(), 0);
+            PostMessage(pwtd->hwndManager, SRM_REGEX_COMPLETE, GetCurrentThreadId(), 0);
 
             delete pwtd;
         }
@@ -660,11 +701,24 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
 
 void CSmartRenameManager::_CancelRegExWorkerThread()
 {
-    SetEvent(m_startRegExWorkerEvent);
-    SetEvent(m_cancelRegExWorkerEvent);
+    if (m_startRegExWorkerEvent)
+    {
+        SetEvent(m_startRegExWorkerEvent);
+    }
+
+    if (m_cancelRegExWorkerEvent)
+    {
+        SetEvent(m_cancelRegExWorkerEvent);
+    }
+
+    _WaitForRegExWorkerThread();
+}
+
+void CSmartRenameManager::_WaitForRegExWorkerThread()
+{
     if (m_regExWorkerThreadHandle)
     {
-        WaitForSingleObject(m_regExWorkerThreadHandle, 0);
+        WaitForSingleObject(m_regExWorkerThreadHandle, INFINITE);
         CloseHandle(m_regExWorkerThreadHandle);
         m_regExWorkerThreadHandle = nullptr;
     }
@@ -849,6 +903,12 @@ void CSmartRenameManager::_ClearSmartRenameItems()
 
 void CSmartRenameManager::_Cleanup()
 {
+    if (m_hwndMessage)
+    {
+        DestroyWindow(m_hwndMessage);
+        m_hwndMessage = nullptr;
+    }
+
     CloseHandle(m_startFileOpWorkerEvent);
     m_startFileOpWorkerEvent = nullptr;
 
@@ -858,6 +918,7 @@ void CSmartRenameManager::_Cleanup()
     CloseHandle(m_cancelRegExWorkerEvent);
     m_cancelRegExWorkerEvent = nullptr;
 
+    _ClearRegEx();
     _ClearEventHandlers();
     _ClearSmartRenameItems();
 }

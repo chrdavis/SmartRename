@@ -95,7 +95,7 @@ public:
     IFACEMETHODIMP DragLeave();
     IFACEMETHODIMP Drop(_In_ IDataObject* pdtobj, DWORD grfKeyState, POINTL pt, _Inout_ DWORD* pdwEffect);
 
-    static HRESULT s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _Outptr_ ISmartRenameUI** ppsrui);
+    static HRESULT s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _In_ bool enableDragDrop, _Outptr_ ISmartRenameUI** ppsrui);
 
 private:
     ~CSmartRenameUI()
@@ -122,7 +122,8 @@ private:
     void _OnCommand(_In_ WPARAM wParam, _In_ LPARAM lParam);
     BOOL _OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam);
 
-    HRESULT _Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo);
+    HRESULT _Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _In_ bool enableDragDrop);
+    void _Cleanup();
 
     void _OnInitDlg();
     void _OnRename();
@@ -137,14 +138,17 @@ private:
     DWORD _GetFlagsFromCheckboxes();
     void _SetCheckboxesFromFlags(_In_ DWORD flags);
 
-    void _UpdateCountsLabel();
+    void _UpdateCounts();
 
     long m_refCount = 0;
     bool m_initialized = false;
+    bool m_enableDragDrop = false;
     HWND m_hwnd = nullptr;
     HWND m_hwndLV = nullptr;
     HICON m_iconMain = nullptr;
     DWORD m_cookie = 0;
+    UINT m_selectedCount = 0;
+    UINT m_renamingCount = 0;
     CComPtr<ISmartRenameManager> m_spsrm;
     CComPtr<IDataObject> m_spdo;
     CComPtr<IDropTargetHelper> m_spdth;

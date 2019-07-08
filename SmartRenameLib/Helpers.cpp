@@ -91,3 +91,34 @@ HRESULT EnumerateDataObject(_In_ IDataObject* pdo, _In_ ISmartRenameManager* psr
     return hr;
 }
 
+extern HINSTANCE g_hInst;
+
+HWND CreateMsgWindow(_In_ WNDPROC pfnWndProc, _In_ void* p)
+{
+    WNDCLASS wc = { 0 };
+    PWSTR wndClassName = L"MsgWindow";
+
+    wc.lpfnWndProc = DefWindowProc;
+    wc.cbWndExtra = sizeof(void*);
+    wc.hInstance = g_hInst;
+    wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
+    wc.lpszClassName = wndClassName;
+
+    RegisterClass(&wc);
+
+    HWND hwnd = CreateWindowEx(
+        0, wndClassName, nullptr, 0,
+        0, 0, 0, 0, HWND_MESSAGE,
+        0, g_hInst, nullptr);
+    if (hwnd)
+    {
+        SetWindowLongPtr(hwnd, 0, (LONG_PTR)p);
+        if (pfnWndProc)
+        {
+            SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)pfnWndProc);
+        }
+    }
+
+    return hwnd;
+}
+

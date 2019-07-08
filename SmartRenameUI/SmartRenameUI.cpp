@@ -51,7 +51,7 @@ HRESULT CSmartRenameUI::_DoModal(__in_opt HWND hwnd)
     return hr;
 }
 
-HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _Outptr_ ISmartRenameUI** ppsrui)
+HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _In_ bool enableDragDrop, _Outptr_ ISmartRenameUI** ppsrui)
 {
     *ppsrui = nullptr;
     CSmartRenameUI *prui = new CSmartRenameUI();
@@ -59,7 +59,7 @@ HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt
     if (SUCCEEDED(hr))
     {
         // Pass the ISmartRenameManager to the ISmartRenameUI so it can subscribe to events
-        hr = prui->_Initialize(psrm, pdo);
+        hr = prui->_Initialize(psrm, pdo, enableDragDrop);
         if (SUCCEEDED(hr))
         {
             hr = prui->QueryInterface(IID_PPV_ARGS(ppsrui));
@@ -102,14 +102,14 @@ IFACEMETHODIMP CSmartRenameUI::get_showUI(_Out_ bool* showUI)
 IFACEMETHODIMP CSmartRenameUI::OnItemAdded(_In_ ISmartRenameItem* pItem)
 {
     m_listview.InsertItem(pItem);
-    _UpdateCountsLabel();
+    _UpdateCounts();
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnUpdate(_In_ ISmartRenameItem* pItem)
 {
     m_listview.UpdateItem(pItem);
-    _UpdateCountsLabel();
+    _UpdateCounts();
     return S_OK;
 }
 
@@ -121,33 +121,35 @@ IFACEMETHODIMP CSmartRenameUI::OnError(_In_ ISmartRenameItem*)
 IFACEMETHODIMP CSmartRenameUI::OnRegExStarted()
 {
     // Disable list view
-    _UpdateCountsLabel();
+    _UpdateCounts();
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnRegExCanceled()
 {
     // Enable list view
-    _UpdateCountsLabel();
+    _UpdateCounts();
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnRegExCompleted()
 {
     // Enable list view
-    _UpdateCountsLabel();
+    _UpdateCounts();
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnRenameStarted()
 {
     // Disable controls
+    EnableWindow(m_hwnd, FALSE);
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnRenameCompleted()
 {
     // Enable controls
+    EnableWindow(m_hwnd, TRUE);
     return S_OK;
 }
 
@@ -199,18 +201,23 @@ IFACEMETHODIMP CSmartRenameUI::Drop(_In_ IDataObject* pdtobj, DWORD, POINTL pt, 
     EnableWindow(m_hwndLV, TRUE);
 
     // Enumerate the data object and popuplate the manager
-    EnumerateDataObject(pdtobj, m_spsrm);
+    if (m_spsrm)
+    {
+        EnumerateDataObject(pdtobj, m_spsrm);
+    }
 
     return S_OK;
 }
 
-HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo)
+HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _In_ bool enableDragDrop)
 {
     // Cache the smart rename manager
     m_spsrm = psrm;
 
     // Cache the data object for enumeration later
     m_spdo = pdo;
+
+    m_enableDragDrop = enableDragDrop;
 
     HRESULT hr = CoCreateInstance(CLSID_DragDropHelper, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&m_spdth));
     if (SUCCEEDED(hr))
@@ -221,10 +228,28 @@ HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDa
 
     if (FAILED(hr))
     {
-        //_Cleanup();
+        _Cleanup();
     }
 
     return hr;
+}
+
+void CSmartRenameUI::_Cleanup()
+{
+    if (m_spsrm && m_cookie != 0)
+    {
+        m_spsrm->UnAdvise(m_cookie);
+        m_cookie = 0;
+        m_spsrm = nullptr;
+    }
+
+    m_spdo = nullptr;
+    m_spdth = nullptr;
+
+    if (m_enableDragDrop)
+    {
+        RevokeDragDrop(m_hwnd);
+    }
 }
 
 // TODO: persist settings made in the UI
@@ -293,12 +318,6 @@ HRESULT CSmartRenameUI::_WriteSettings()
 
 void CSmartRenameUI::_OnClear()
 {
-    // Clear input fields, reset options to defaults and reinit the contents of the list view
-    // Clear the contents of the edit boxes
-    //SetDlgItemText(m_hwnd, IDC_EDIT_SOURCE_MODULE, L"");
-    //SetDlgItemText(m_hwnd, IDC_EDIT_SCREENSHOT_DESTINATION, L"");
-
-    //_ToggleContent(TRUE);
 }
 
 void CSmartRenameUI::_OnCloseDlg()
@@ -310,20 +329,17 @@ void CSmartRenameUI::_OnCloseDlg()
 
 void CSmartRenameUI::_OnDestroyDlg()
 {
-    // TODO: teardown
+    _Cleanup();
 }
 
 void CSmartRenameUI::_OnRename()
 {
     // TODO: Update UI to show we are renaming (disable controls)
-    m_spsrm->Rename(m_hwnd);
+    if (m_spsrm)
+    {
+        m_spsrm->Rename(m_hwnd);
+    }
 }
-
-/*void CSmartRenameUI::_OnRunRenamePreview()
-{
-    // TODO: We should have a interface and event interface that wraps the search/replace/regex inputs and settings/options
-    // TODO: That way the manager could respond to changes set via the UI and it will run the rename preview on its own
-}*/
 
 INT_PTR CSmartRenameUI::_DlgProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -374,7 +390,7 @@ void CSmartRenameUI::_OnInitDlg()
         _SetCheckboxesFromFlags(flags);
     }
 
-    if (m_spdo)
+    if (m_spdo && m_spsrm)
     {
         EnumerateDataObject(m_spdo, m_spsrm);
     }
@@ -400,10 +416,17 @@ void CSmartRenameUI::_OnInitDlg()
     }*/
 
     // TODO: put this behind a setting?
-    RegisterDragDrop(m_hwnd, this);
+    if (m_enableDragDrop)
+    {
+        RegisterDragDrop(m_hwnd, this);
+    }
 
-    // Disable until items added
-    //EnableWindow(m_hwndLV, FALSE);
+    // Disable rename button by default.  It will be enabled in _UpdateCounts if
+    // there are tiems to be renamed
+    EnableWindow(GetDlgItem(m_hwnd, ID_RENAME), FALSE);
+
+    // Update UI elements that depend on number of items selected or to be renamed
+    _UpdateCounts();
 
     m_initialized = true;
 }
@@ -477,7 +500,11 @@ BOOL CSmartRenameUI::_OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam)
                 ((pnmlv->uNewState & LVIS_STATEIMAGEMASK) != (pnmlv->uOldState & LVIS_STATEIMAGEMASK)) &&
                 (pnmlv->uOldState != 0))
             {
-                m_listview.UpdateItemCheckState(m_spsrm, pnmlv->iItem);
+                if (m_spsrm)
+                {
+                    m_listview.UpdateItemCheckState(m_spsrm, pnmlv->iItem);
+                    _UpdateCounts();
+                }
             }
             break;
 
@@ -497,7 +524,7 @@ void CSmartRenameUI::_OnSearchReplaceChanged()
 {
     // Pass updated search and replace terms to the ISmartRenameRegEx handler
     CComPtr<ISmartRenameRegEx> spRegEx;
-    if (SUCCEEDED(m_spsrm->get_smartRenameRegEx(&spRegEx)))
+    if (m_spsrm && SUCCEEDED(m_spsrm->get_smartRenameRegEx(&spRegEx)))
     {
         wchar_t buffer[MAX_PATH] = { 0 };
         GetDlgItemText(m_hwnd, IDC_EDIT_SEARCHFOR, buffer, ARRAYSIZE(buffer));
@@ -537,11 +564,8 @@ void CSmartRenameUI::_SetCheckboxesFromFlags(_In_ DWORD flags)
     }
 }
 
-void CSmartRenameUI::_UpdateCountsLabel()
+void CSmartRenameUI::_UpdateCounts()
 {
-    wchar_t countsLabelFormat[100] = { 0 };
-    LoadString(g_hInst, IDS_COUNTSLABELFMT, countsLabelFormat, ARRAYSIZE(countsLabelFormat));
-
     UINT selectedCount = 0;
     UINT renamingCount = 0;
     if (m_spsrm)
@@ -550,9 +574,23 @@ void CSmartRenameUI::_UpdateCountsLabel()
         m_spsrm->GetRenameItemCount(&renamingCount);
     }
 
-    wchar_t countsLabel[100] = { 0 };
-    StringCchPrintf(countsLabel, ARRAYSIZE(countsLabel), countsLabelFormat, selectedCount, renamingCount);
-    SetDlgItemText(m_hwnd, IDC_STATUS_MESSAGE, countsLabel);
+    if (m_selectedCount != selectedCount ||
+        m_renamingCount != renamingCount)
+    {
+        m_selectedCount = selectedCount;
+        m_renamingCount = renamingCount;
+
+        // Update selected and rename count label
+        wchar_t countsLabelFormat[100] = { 0 };
+        LoadString(g_hInst, IDS_COUNTSLABELFMT, countsLabelFormat, ARRAYSIZE(countsLabelFormat));
+
+        wchar_t countsLabel[100] = { 0 };
+        StringCchPrintf(countsLabel, ARRAYSIZE(countsLabel), countsLabelFormat, selectedCount, renamingCount);
+        SetDlgItemText(m_hwnd, IDC_STATUS_MESSAGE, countsLabel);
+
+        // Update Rename button state
+        EnableWindow(GetDlgItem(m_hwnd, ID_RENAME), (renamingCount > 0));
+    }
 }
 
 CSmartRenameListView::CSmartRenameListView()

@@ -130,7 +130,7 @@ DWORD WINAPI CSmartRenameMenu::s_SmartRenameUIThreadProc(_In_ void* pData)
         {
             // Create the smart rename UI instance and pass the smart rename manager
             CComPtr<ISmartRenameUI> spsrui;
-            if (SUCCEEDED(CSmartRenameUI::s_CreateInstance(spsrm, spdo, &spsrui)))
+            if (SUCCEEDED(CSmartRenameUI::s_CreateInstance(spsrm, spdo, false, &spsrui)))
             {
                 // Call blocks until we are done
                 spsrui->Show();
