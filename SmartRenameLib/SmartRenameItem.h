@@ -22,7 +22,6 @@ public:
     IFACEMETHODIMP get_newName(_Outptr_ PWSTR* newName);
     IFACEMETHODIMP get_isFolder(_Out_ bool* isFolder);
     IFACEMETHODIMP get_isSubFolderContent(_Out_ bool* isSubFolderContent);
-    IFACEMETHODIMP put_isSubFolderContent(_In_ bool isSubFolderContent);
     IFACEMETHODIMP get_isDirty(_Out_ bool* isDirty);
     IFACEMETHODIMP get_selected(_Out_ bool* selected);
     IFACEMETHODIMP put_selected(_In_ bool selected);
@@ -51,7 +50,6 @@ private:
 
 private:
     bool     m_isDirty = false;
-    bool     m_isSubFolderContent = false;
     bool     m_selected = true;
     bool     m_isFolder = false;
     int      m_id = -1;

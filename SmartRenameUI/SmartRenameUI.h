@@ -11,8 +11,8 @@ public:
     HRESULT Init(_In_ HWND hwndLV);
     HRESULT Clear();
     HRESULT UpdateItems(_In_ ISmartRenameManager* psrm);
-    HRESULT InsertItem(_In_ ISmartRenameItem* pItem);
-    HRESULT UpdateItem(_In_ ISmartRenameItem* pItem);
+    HRESULT InsertItem(_In_ ISmartRenameItem* pItem, _In_ DWORD flags);
+    HRESULT UpdateItem(_In_ ISmartRenameItem* pItem, _In_ DWORD flags);
     HRESULT RemoveItem(_In_ ISmartRenameItem* pItem);
     HRESULT ToggleAll(_In_ bool selected);
     HRESULT UpdateItemCheckState(_In_ ISmartRenameManager* psrm, _In_ int iItem);
@@ -21,13 +21,11 @@ public:
 
 private:
     HRESULT _InsertItems(_In_ ISmartRenameManager* psrm);
-    HRESULT _UpdateSubItems(_In_ ISmartRenameItem* pItem, _In_ int iItem);
+    HRESULT _UpdateSubItems(_In_ ISmartRenameItem* pItem, _In_ DWORD flags, _In_ int iItem);
     HRESULT _UpdateColumns();
     HRESULT _UpdateColumnSizes();
     HRESULT _UpdateHeaderCheckState(_In_ bool check);
     HRESULT _FindItemByParam(_In_ LPARAM lParam, _Out_ int* piIndex);
-
-    bool _ShouldIncludeItem(_In_ ISmartRenameItem* pItem);
 
     HWND m_hwndLV = nullptr;
 };

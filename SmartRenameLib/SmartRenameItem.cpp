@@ -106,14 +106,7 @@ IFACEMETHODIMP CSmartRenameItem::get_isFolder(_Out_ bool* isFolder)
 IFACEMETHODIMP CSmartRenameItem::get_isSubFolderContent(_Out_ bool* isSubFolderContent)
 {
     CSRWSharedAutoLock lock(&m_lock);
-    *isSubFolderContent = m_isSubFolderContent;
-    return S_OK;
-}
-
-IFACEMETHODIMP CSmartRenameItem::put_isSubFolderContent(_In_ bool isSubFolderContent)
-{
-    CSRWSharedAutoLock lock(&m_lock);
-    m_isSubFolderContent = isSubFolderContent;
+    *isSubFolderContent = m_depth > 0;
     return S_OK;
 }
 
@@ -171,7 +164,7 @@ IFACEMETHODIMP CSmartRenameItem::ShouldRenameItem(_In_ DWORD flags, _Out_ bool* 
     bool hasChanged = m_newName != nullptr && (lstrcmp(m_originalName, m_newName) != 0);
     bool excludeBecauseFolder = (m_isFolder && (flags & SmartRenameFlags::ExcludeFolders));
     bool excludeBecauseFile = (!m_isFolder && (flags & SmartRenameFlags::ExcludeFiles));
-    bool excludeBecauseSubFolderContent = (m_isSubFolderContent && (flags & SmartRenameFlags::ExcludeSubfolders));
+    bool excludeBecauseSubFolderContent = (m_depth > 0 && (flags & SmartRenameFlags::ExcludeSubfolders));
     *shouldRename = (m_selected && hasChanged && !excludeBecauseFile && !excludeBecauseFolder && !excludeBecauseSubFolderContent);
 
     return S_OK;

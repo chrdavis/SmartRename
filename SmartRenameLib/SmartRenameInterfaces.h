@@ -47,7 +47,6 @@ public:
     IFACEMETHOD(put_newName)(_In_ PCWSTR newName) = 0;
     IFACEMETHOD(get_isFolder)(_Out_ bool* isFolder) = 0;
     IFACEMETHOD(get_isSubFolderContent)(_Out_ bool* isSubFolderContent) = 0;
-    IFACEMETHOD(put_isSubFolderContent)(_In_ bool isSubFolderContent) = 0;
     IFACEMETHOD(get_isDirty)(_Out_ bool* isDirty) = 0;
     IFACEMETHOD(get_selected)(_Out_ bool* selected) = 0;
     IFACEMETHOD(put_selected)(_In_ bool selected) = 0;

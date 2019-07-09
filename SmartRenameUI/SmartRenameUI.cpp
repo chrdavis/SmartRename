@@ -103,14 +103,26 @@ IFACEMETHODIMP CSmartRenameUI::get_showUI(_Out_ bool* showUI)
 
 IFACEMETHODIMP CSmartRenameUI::OnItemAdded(_In_ ISmartRenameItem* pItem)
 {
-    m_listview.InsertItem(pItem);
+    DWORD flags = 0;
+    if (m_spsrm)
+    {
+        m_spsrm->get_flags(&flags);
+    }
+
+    m_listview.InsertItem(pItem, flags);
     _UpdateCounts();
     return S_OK;
 }
 
 IFACEMETHODIMP CSmartRenameUI::OnUpdate(_In_ ISmartRenameItem* pItem)
 {
-    m_listview.UpdateItem(pItem);
+    DWORD flags = 0;
+    if (m_spsrm)
+    {
+        m_spsrm->get_flags(&flags);
+    }
+
+    m_listview.UpdateItem(pItem, flags);
     _UpdateCounts();
     return S_OK;
 }
@@ -681,7 +693,7 @@ HRESULT CSmartRenameListView::UpdateItemCheckState(_In_ ISmartRenameManager* psr
 {
     HRESULT hr = E_INVALIDARG;
 
-    if ((m_hwndLV) && (iItem > -1))
+    if (psrm && m_hwndLV && (iItem > -1))
     {
         CComPtr<ISmartRenameItem> spItem;
         hr = GetItemByIndex(psrm, iItem, &spItem);
@@ -692,6 +704,11 @@ HRESULT CSmartRenameListView::UpdateItemCheckState(_In_ ISmartRenameManager* psr
 
             UINT uSelected = (checked) ? LVIS_SELECTED : 0;
             ListView_SetItemState(m_hwndLV, iItem, uSelected, LVIS_SELECTED);
+
+            // Update the rename column if necessary
+            DWORD flags = 0;
+            psrm->get_flags(&flags);
+            UpdateItem(spItem, flags);
         }
 
         // Get the total number of list items and compare it to what is selected
@@ -750,7 +767,7 @@ HRESULT CSmartRenameListView::UpdateItems(_In_ ISmartRenameManager* psrm)
     return hr;
 }
 
-HRESULT CSmartRenameListView::InsertItem(_In_ ISmartRenameItem* pItem)
+HRESULT CSmartRenameListView::InsertItem(_In_ ISmartRenameItem* pItem, _In_ DWORD flags)
 {
     HRESULT hr = E_INVALIDARG;
     if ((m_hwndLV) && (pItem))
@@ -774,7 +791,7 @@ HRESULT CSmartRenameListView::InsertItem(_In_ ISmartRenameItem* pItem)
         if (iNum != -1)
         {
             // Update the sub items of the list item
-            hr = _UpdateSubItems(pItem, iNum);
+            hr = _UpdateSubItems(pItem, flags, iNum);
 
             // Set the check state
             bool selected = false;
@@ -786,7 +803,7 @@ HRESULT CSmartRenameListView::InsertItem(_In_ ISmartRenameItem* pItem)
     return hr;
 }
 
-HRESULT CSmartRenameListView::UpdateItem(_In_ ISmartRenameItem* pItem)
+HRESULT CSmartRenameListView::UpdateItem(_In_ ISmartRenameItem* pItem, _In_ DWORD flags)
 {
     HRESULT hr = E_INVALIDARG;
 
@@ -800,7 +817,7 @@ HRESULT CSmartRenameListView::UpdateItem(_In_ ISmartRenameItem* pItem)
         if ((SUCCEEDED(hr)) && (iIndex != -1))
         {
             // Insert the client settings in the correct columns (if the column is visible)
-            hr = _UpdateSubItems(pItem, iIndex);
+            hr = _UpdateSubItems(pItem, flags, iIndex);
         }
     }
 
@@ -834,6 +851,9 @@ HRESULT CSmartRenameListView::_InsertItems(_In_ ISmartRenameManager* psrm)
 
     if (m_hwndLV)
     {
+        DWORD flags = 0;
+        psrm->get_flags(&flags);
+
         // Loop through our list of items to rename
         UINT itemCount = 0;
         hr = psrm->GetItemCount(&itemCount);
@@ -844,24 +864,7 @@ HRESULT CSmartRenameListView::_InsertItems(_In_ ISmartRenameManager* psrm)
             if (SUCCEEDED(hr))
             {
                 // Are we including this type of item?
-                if (_ShouldIncludeItem(spItem))
-                {
-                    hr = InsertItem(spItem);
-                }
-
-                if (SUCCEEDED(hr))
-                {
-                    // Are we displaying child items?
-                    //if (dwFlags & OPT_INCLUDESUBFOLDERS)
-                    {
-                        // Does this item have children?
-                        //HDPA dpaChildItems = pCurrItem->GetChildDPA();
-                        //if (DPA_GetPtrCount(dpaItemList) > 0)
-                        //{
-                        //    hr = _InsertItems(dpaChildItems, dwFlags);
-                        //}
-                    }
-                }
+                hr = InsertItem(spItem, flags);
             }
         }
     }
@@ -869,35 +872,7 @@ HRESULT CSmartRenameListView::_InsertItems(_In_ ISmartRenameManager* psrm)
     return hr;
 }
 
-bool CSmartRenameListView::_ShouldIncludeItem(_In_ ISmartRenameItem* pItem)
-{
-    bool include = true;
-
-    if (pItem)
-    {
-        // TODO: Update by checking against flags
-        // TODO: Should the LV class be notified of flags changing as well?
-        // TODO: We should rethink the flags changed notification
-
-        // Is this a folder and if so are we allowing folders?
-        /*if ((!(dwOptions & OPT_EXCLUDEFOLDERS)) &&
-            (pRenameItem->IsFolder()))
-        {
-            fInclude = TRUE;
-        }
-
-        // Is this a file and if so are we allowing files?
-        if ((!(dwOptions & OPT_EXCLUDEFILES)) &&
-            (!pRenameItem->IsFolder()))
-        {
-            fInclude = TRUE;
-        }*/
-    }
-
-    return include;
-}
-
-HRESULT CSmartRenameListView::_UpdateSubItems(_In_ ISmartRenameItem* pItem, _In_ int iItem)
+HRESULT CSmartRenameListView::_UpdateSubItems(_In_ ISmartRenameItem* pItem, _In_ DWORD flags, _In_ int iItem)
 {
     HRESULT hr = E_INVALIDARG;
 
@@ -925,10 +900,15 @@ HRESULT CSmartRenameListView::_UpdateSubItems(_In_ ISmartRenameItem* pItem, _In_
             // Get the new name if we have one
             lvitemCurr.pszText = L"";
             PWSTR newName = nullptr;
-            if (SUCCEEDED(pItem->get_newName(&newName)))
+            
+            bool shouldRename = false;
+            if (SUCCEEDED(pItem->ShouldRenameItem(flags, &shouldRename)) && shouldRename)
             {
-                // We have a new name
-                lvitemCurr.pszText = newName;
+                if (SUCCEEDED(pItem->get_newName(&newName)))
+                {
+                    // We have a new name
+                    lvitemCurr.pszText = newName;
+                }
             }
 
             // Add the new name - if any

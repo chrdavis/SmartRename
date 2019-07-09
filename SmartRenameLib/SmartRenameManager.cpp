@@ -623,6 +623,26 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
                         CComPtr<ISmartRenameItem> spItem;
                         if (SUCCEEDED(pwtd->spsrm->GetItemByIndex(u, &spItem)))
                         {
+                            int id = -1;
+                            spItem->get_id(&id);
+
+                            bool isFolder = false;
+                            bool isSubFolderContent = false;
+                            spItem->get_isFolder(&isFolder);
+                            spItem->get_isSubFolderContent(&isSubFolderContent);
+                            if ((isFolder && (flags & SmartRenameFlags::ExcludeFolders)) ||
+                                (!isFolder && (flags & SmartRenameFlags::ExcludeFiles)) ||
+                                (isSubFolderContent && (flags & SmartRenameFlags::ExcludeSubfolders)))
+                            {
+                                // Exclude this item from renaming.  Ensure new name is cleared.
+                                spItem->put_newName(nullptr);
+
+                                // Send the manager thread the item processed message
+                                PostMessage(pwtd->hwndManager, SRM_REGEX_ITEM_UPDATED, GetCurrentThreadId(), id);
+
+                                continue;
+                            }
+
                             PWSTR originalName = nullptr;
                             if (SUCCEEDED(spItem->get_originalName(&originalName)))
                             {
@@ -693,42 +713,34 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
                                     newNameToUse = nullptr;
                                 }
 
-                                // Only update newName if there was in fact a change from the original name
-                                //if (newName == nullptr || lstrcmp(originalName, newName) != 0)
+                                wchar_t uniqueName[MAX_PATH] = { 0 };
+                                if (newNameToUse != nullptr && (flags & EnumerateItems))
                                 {
-                                    wchar_t uniqueName[MAX_PATH] = { 0 };
-                                    if (newNameToUse != nullptr && (flags & EnumerateItems))
+                                    PWSTR parentPath = nullptr;
+                                    spItem->get_parentPath(&parentPath);
+
+                                    // Make a unique name with a counter
+                                    if (PathMakeUniqueName(uniqueName, ARRAYSIZE(uniqueName), newNameToUse, newNameToUse, parentPath))
                                     {
-                                        PWSTR parentPath = nullptr;
-                                        spItem->get_parentPath(&parentPath);
-
-                                        // Make a unique name with a counter
-                                        if (PathMakeUniqueName(uniqueName, ARRAYSIZE(uniqueName), newNameToUse, newNameToUse, parentPath))
+                                        // Trim to the last element in the path
+                                        newNameToUse = PathFindFileNameW(uniqueName);
+                                        if (newNameToUse == nullptr)
                                         {
-                                            // Trim to the last element in the path
-                                            newNameToUse = PathFindFileNameW(uniqueName);
-                                            if (newNameToUse == nullptr)
-                                            {
-                                                uniqueName[0] = L'\0';
-                                                newNameToUse = uniqueName;
-                                            }
-                                        }
-
-                                        CoTaskMemFree(parentPath);
-                                    }
-
-                                    spItem->put_newName(newNameToUse);
-
-                                    // Was there a change?
-                                    if (lstrcmp(currentNewName, newNameToUse) != 0)
-                                    {
-                                        int id = -1;
-                                        if (SUCCEEDED(spItem->get_id(&id)))
-                                        {
-                                            // Send the manager thread the item processed message
-                                            PostMessage(pwtd->hwndManager, SRM_REGEX_ITEM_UPDATED, GetCurrentThreadId(), id);
+                                            uniqueName[0] = L'\0';
+                                            newNameToUse = uniqueName;
                                         }
                                     }
+
+                                    CoTaskMemFree(parentPath);
+                                }
+
+                                spItem->put_newName(newNameToUse);
+
+                                // Was there a change?
+                                if (lstrcmp(currentNewName, newNameToUse) != 0)
+                                {
+                                    // Send the manager thread the item processed message
+                                    PostMessage(pwtd->hwndManager, SRM_REGEX_ITEM_UPDATED, GetCurrentThreadId(), id);
                                 }
 
                                 CoTaskMemFree(newName);
