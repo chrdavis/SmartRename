@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <shlobj.h>
 #include "helpers.h"
+#include <filesystem>
+namespace fs = std::filesystem;
 
 // The default FOF flags to use in the rename operations
 #define FOF_DEFAULTFLAGS (FOF_ALLOWUNDO | FOFX_SHOWELEVATIONPROMPT | FOF_RENAMEONCOLLISION)
@@ -627,31 +629,81 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
                                 PWSTR currentNewName = nullptr;
                                 spItem->get_newName(&currentNewName);
 
+                                wchar_t sourceName[MAX_PATH] = { 0 };
+                                if (flags & NameOnly)
+                                {
+                                    StringCchCopy(sourceName, ARRAYSIZE(sourceName), fs::path(originalName).stem().c_str());
+                                }
+                                else if (flags & ExtensionOnly)
+                                {
+                                    std::wstring extension = fs::path(originalName).extension().wstring();
+                                    if (!extension.empty() && extension.front() == '.')
+                                    {
+                                        extension = extension.erase(0, 1);
+                                    }
+                                    StringCchCopy(sourceName, ARRAYSIZE(sourceName), extension.c_str());
+                                }
+                                else
+                                {
+                                    StringCchCopy(sourceName, ARRAYSIZE(sourceName), originalName);
+                                }
+
+
                                 PWSTR newName = nullptr;
                                 // Failure here means we didn't match anything or had nothing to match
                                 // Call put_newName with null in that case to reset it
-                                spRenameRegEx->Replace(originalName, &newName);
+                                spRenameRegEx->Replace(sourceName, &newName);
+
+                                wchar_t resultName[MAX_PATH] = { 0 };
+
+
+                                PWSTR newNameToUse = nullptr;
+
+                                // newName == nullptr likely means we have an empty search string.  We should leave newNameToUse
+                                // as nullptr so we clear the renamed column
+                                if (newName != nullptr)
+                                {
+                                    newNameToUse = resultName;
+                                    if (flags & NameOnly)
+                                    {
+                                        StringCchPrintf(resultName, ARRAYSIZE(resultName), L"%s%s", newName, fs::path(originalName).extension().c_str());
+                                    }
+                                    else if (flags & ExtensionOnly)
+                                    {
+                                        std::wstring extension = fs::path(originalName).extension().wstring();
+                                        if (!extension.empty())
+                                        {
+                                            StringCchPrintf(resultName, ARRAYSIZE(resultName), L"%s.%s", fs::path(originalName).stem().c_str(), newName);
+                                        }
+                                        else
+                                        {
+                                            StringCchCopy(resultName, ARRAYSIZE(resultName), originalName);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        StringCchCopy(resultName, ARRAYSIZE(resultName), newName);
+                                    }
+                                }
                                 
                                 // No change from originalName so set newName to
                                 // null so we clear it from our UI as well.
-                                if (lstrcmp(originalName, newName) == 0)
+                                if (lstrcmp(originalName, newNameToUse) == 0)
                                 {
-                                    CoTaskMemFree(newName);
-                                    newName = nullptr;
+                                    newNameToUse = nullptr;
                                 }
 
                                 // Only update newName if there was in fact a change from the original name
                                 //if (newName == nullptr || lstrcmp(originalName, newName) != 0)
                                 {
-                                    PWSTR newNameToUse = newName;
                                     wchar_t uniqueName[MAX_PATH] = { 0 };
-                                    if (newName != nullptr && (flags & EnumerateItems))
+                                    if (newNameToUse != nullptr && (flags & EnumerateItems))
                                     {
                                         PWSTR parentPath = nullptr;
                                         spItem->get_parentPath(&parentPath);
 
                                         // Make a unique name with a counter
-                                        if (PathMakeUniqueName(uniqueName, ARRAYSIZE(uniqueName), newName, newName, parentPath))
+                                        if (PathMakeUniqueName(uniqueName, ARRAYSIZE(uniqueName), newNameToUse, newNameToUse, parentPath))
                                         {
                                             // Trim to the last element in the path
                                             newNameToUse = PathFindFileNameW(uniqueName);

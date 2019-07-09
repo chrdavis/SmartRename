@@ -32,12 +32,14 @@ struct FlagCheckboxMap
 FlagCheckboxMap g_flagCheckboxMap[] =
 {
     { UseRegularExpressions, IDC_CHECK_USEREGEX },
-    { ExcludeSubfolders, IDC_CHECK_EXCLUDESUBFOLDERS},
-    { EnumerateItems, IDC_CHECK_ENUMITEMS},
-    { ExcludeFiles, IDC_CHECK_EXCLUDEFILES},
-    { CaseSensitive, IDC_CHECK_CASESENSITIVE},
-    { MatchAllOccurences, IDC_CHECK_MATCHALLOCCRENCES},
-    { ExcludeFolders, IDC_CHECK_EXCLUDEFOLDERS}
+    { ExcludeSubfolders, IDC_CHECK_EXCLUDESUBFOLDERS },
+    { EnumerateItems, IDC_CHECK_ENUMITEMS },
+    { ExcludeFiles, IDC_CHECK_EXCLUDEFILES },
+    { CaseSensitive, IDC_CHECK_CASESENSITIVE },
+    { MatchAllOccurences, IDC_CHECK_MATCHALLOCCRENCES },
+    { ExcludeFolders, IDC_CHECK_EXCLUDEFOLDERS },
+    { NameOnly, IDC_CHECK_NAMEONLY },
+    { ExtensionOnly, IDC_CHECK_EXTENSIONONLY }
 };
 
 HRESULT CSmartRenameUI::_DoModal(__in_opt HWND hwnd)
@@ -459,8 +461,11 @@ void CSmartRenameUI::_OnCommand(_In_ WPARAM wParam, _In_ LPARAM lParam)
     case IDC_CHECK_EXCLUDESUBFOLDERS:
     case IDC_CHECK_MATCHALLOCCRENCES:
     case IDC_CHECK_USEREGEX:
+    case IDC_CHECK_EXTENSIONONLY:
+    case IDC_CHECK_NAMEONLY:
         if (BN_CLICKED == HIWORD(wParam))
         {
+            _ValidateFlagCheckbox(LOWORD(wParam));
             _GetFlagsFromCheckboxes();
         }
         break;
@@ -561,6 +566,24 @@ void CSmartRenameUI::_SetCheckboxesFromFlags(_In_ DWORD flags)
     for (int i = 0; i < ARRAYSIZE(g_flagCheckboxMap); i++)
     {
         Button_SetCheck(GetDlgItem(m_hwnd, g_flagCheckboxMap[i].id), flags & g_flagCheckboxMap[i].flag);
+    }
+}
+
+void CSmartRenameUI::_ValidateFlagCheckbox(_In_ DWORD checkBoxId)
+{
+    if (checkBoxId == IDC_CHECK_NAMEONLY)
+    {
+        if (Button_GetCheck(GetDlgItem(m_hwnd, IDC_CHECK_NAMEONLY)) == BST_CHECKED)
+        {
+            Button_SetCheck(GetDlgItem(m_hwnd, IDC_CHECK_EXTENSIONONLY), FALSE);
+        }
+    }
+    else if (checkBoxId == IDC_CHECK_EXTENSIONONLY)
+    {
+        if (Button_GetCheck(GetDlgItem(m_hwnd, IDC_CHECK_EXTENSIONONLY)) == BST_CHECKED)
+        {
+            Button_SetCheck(GetDlgItem(m_hwnd, IDC_CHECK_NAMEONLY), FALSE);
+        }
     }
 }
 

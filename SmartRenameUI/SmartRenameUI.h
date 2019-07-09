@@ -137,6 +137,7 @@ private:
 
     DWORD _GetFlagsFromCheckboxes();
     void _SetCheckboxesFromFlags(_In_ DWORD flags);
+    void _ValidateFlagCheckbox(_In_ DWORD checkBoxId);
 
     void _UpdateCounts();
 
