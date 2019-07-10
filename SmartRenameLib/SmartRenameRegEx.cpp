@@ -2,6 +2,7 @@
 #include "SmartRenameRegEx.h"
 #include <regex>
 #include <string>
+#include <algorithm>
 
 
 using namespace std;
@@ -187,8 +188,46 @@ HRESULT CSmartRenameRegEx::Replace(_In_ PCWSTR source, _Outptr_ PWSTR* result)
         wstring res = source;
         try
         {
-            wregex pattern(m_searchTerm, (!(m_flags & CaseSensitive)) ? regex_constants::icase | regex_constants::ECMAScript : regex_constants::ECMAScript);
-            res = regex_replace(wstring(source), pattern, m_replaceTerm ? wstring(m_replaceTerm) : wstring(L""));
+            // TODO: creating the regex could be costly.  May want to cache this.
+            std::wstring sourceToUse(source);
+            std::wstring searchTerm(m_searchTerm);
+            std::wstring replaceTerm(m_replaceTerm ? wstring(m_replaceTerm) : wstring(L""));
+
+            if (m_flags & UseRegularExpressions)
+            {
+                std::wregex pattern(m_searchTerm, (!(m_flags & CaseSensitive)) ? regex_constants::icase | regex_constants::ECMAScript : regex_constants::ECMAScript);
+                if (m_flags & MatchAllOccurences)
+                {
+                    res = regex_replace(wstring(source), pattern, replaceTerm);
+                }
+                else
+                {
+                    std::wsmatch m;
+                    if (std::regex_search(sourceToUse, m, pattern))
+                    {
+                        res = sourceToUse.replace(m.prefix().length(), searchTerm.length(), replaceTerm);
+                    }
+                }
+            }
+            else
+            {
+                // Simple search and replace
+                size_t pos = 0;
+                do
+                {
+                    pos = _Find(sourceToUse, searchTerm, (!(m_flags & CaseSensitive)), pos);
+                    if (pos != std::string::npos)
+                    {
+                        res = sourceToUse.replace(pos, searchTerm.length(), replaceTerm);
+                    }
+
+                    if (!(m_flags & MatchAllOccurences))
+                    {
+                        break;
+                    }
+                } while (pos != std::string::npos);
+            }
+
             *result = StrDup(res.c_str());
             hr = (*result) ? S_OK : E_OUTOFMEMORY;
         }
@@ -198,6 +237,19 @@ HRESULT CSmartRenameRegEx::Replace(_In_ PCWSTR source, _Outptr_ PWSTR* result)
         }
     }
     return hr;
+}
+
+size_t CSmartRenameRegEx::_Find(std::wstring data, std::wstring toSearch, bool caseInsensitive, size_t pos)
+{
+    if (caseInsensitive)
+    {
+        // Convert to lower
+        std::transform(data.begin(), data.end(), data.begin(), ::towlower);
+        std::transform(toSearch.begin(), toSearch.end(), toSearch.begin(), ::towlower);
+    }
+
+    // Find sub string position in given string starting at position pos
+    return data.find(toSearch, pos);
 }
 
 void CSmartRenameRegEx::_OnSearchTermChanged()

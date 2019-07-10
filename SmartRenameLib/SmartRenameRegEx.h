@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.h"
 #include <vector>
+#include <string>
 #include "srwlock.h"
 
 class CSmartRenameRegEx : public ISmartRenameRegEx
@@ -31,6 +32,8 @@ private:
     void _OnSearchTermChanged();
     void _OnReplaceTermChanged();
     void _OnFlagsChanged();
+
+    size_t _Find(std::wstring data, std::wstring toSearch, bool caseInsensitive, size_t pos);
 
     DWORD m_flags = 0;
     PWSTR m_searchTerm = nullptr;
