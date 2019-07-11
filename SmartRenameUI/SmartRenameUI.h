@@ -125,6 +125,7 @@ private:
 
     void _OnInitDlg();
     void _OnRename();
+    void _OnAbout();
     void _OnCloseDlg();
     void _OnDestroyDlg();
     void _OnClear();

@@ -267,66 +267,13 @@ void CSmartRenameUI::_Cleanup()
 }
 
 // TODO: persist settings made in the UI
-
 HRESULT CSmartRenameUI::_ReadSettings()
 {
-   /* HKEY hKey = NULL;
-    HRESULT hr = HRESULT_FROM_WIN32(RegOpenKeyEx(HKEY_CURRENT_USER, REG_DD_SETTINGS_KEY, 0, KEY_READ, &hKey));
-    if (SUCCEEDED(hr))
-    {
-        WCHAR szBuff[MAX_PATH] = { 0 };
-        DWORD cb = (DWORD)(sizeof(WCHAR) * ARRAYSIZE(szBuff));
-        DWORD dwType = REG_SZ;
-        if (ERROR_SUCCESS == RegQueryValueEx(hKey, REG_DD_SETTING_SOURCE_MODULE, NULL, &dwType, (LPBYTE)szBuff, &cb))
-        {
-            SetDlgItemText(m_hwnd, IDC_EDIT_SOURCE_MODULE, szBuff);
-        }
-
-        szBuff[0] = L'\0';
-        cb = (DWORD)(sizeof(WCHAR) * ARRAYSIZE(szBuff));
-        dwType = REG_SZ;
-        if (ERROR_SUCCESS == RegQueryValueEx(hKey, REG_DD_SETTING_DEST_PATH, NULL, &dwType, (LPBYTE)szBuff, &cb))
-        {
-            SetDlgItemText(m_hwnd, IDC_EDIT_SCREENSHOT_DESTINATION, szBuff);
-        }
-
-        cb = (DWORD)sizeof(DWORD);
-        dwType = REG_DWORD;
-        DWORD dwVal = 0;
-        if (ERROR_SUCCESS == RegQueryValueEx(hKey, REG_DD_SETTING_SHOW_PROGRESS, NULL, &dwType, (LPBYTE)&dwVal, &cb))
-        {
-            CheckDlgButton(m_hwnd, IDC_SHOW_PROGRESS, (dwVal == 1) ? BST_CHECKED : BST_UNCHECKED);
-        }
-
-        RegCloseKey(hKey);
-    }
-    return hr;*/
-
     return S_OK;
 }
 
 HRESULT CSmartRenameUI::_WriteSettings()
 {
-    /*HKEY hKey = NULL;
-    HRESULT hr = HRESULT_FROM_WIN32(RegCreateKeyEx(HKEY_CURRENT_USER, REG_DD_SETTINGS_KEY, NULL, NULL, NULL,
-        KEY_WRITE, NULL, &hKey, NULL));
-    if (SUCCEEDED(hr))
-    {
-        WCHAR szBuff[MAX_PATH] = { 0 };
-        GetDlgItemText(m_hwnd, IDC_EDIT_SOURCE_MODULE, szBuff, ARRAYSIZE(szBuff));
-        RegSetValueEx(hKey, REG_DD_SETTING_SOURCE_MODULE, 0, REG_SZ, (LPBYTE)szBuff, (DWORD)(sizeof(WCHAR) * wcslen(szBuff)));
-
-        GetDlgItemText(m_hwnd, IDC_EDIT_SCREENSHOT_DESTINATION, szBuff, ARRAYSIZE(szBuff));
-        RegSetValueEx(hKey, REG_DD_SETTING_DEST_PATH, 0, REG_SZ, (LPBYTE)szBuff, (DWORD)(sizeof(WCHAR) * wcslen(szBuff)));
-
-        DWORD dwVal = (IsDlgButtonChecked(m_hwnd, IDC_SHOW_PROGRESS) == BST_CHECKED) ? 1 : 0;
-        RegSetValueEx(hKey, REG_DD_SETTING_SHOW_PROGRESS, 0, REG_DWORD, (LPBYTE)&dwVal, (DWORD)(sizeof(DWORD)));
-
-        RegCloseKey(hKey);
-    }
-
-    return hr;*/
-
     return S_OK;
 }
 
@@ -353,6 +300,18 @@ void CSmartRenameUI::_OnRename()
     {
         m_spsrm->Rename(m_hwnd);
     }
+}
+
+void CSmartRenameUI::_OnAbout()
+{
+    // Launch github page
+    SHELLEXECUTEINFO info = {0};
+    info.cbSize = sizeof(SHELLEXECUTEINFO);
+    info.lpVerb = L"open";
+    info.lpFile = L"http://www.github.com/chrdavis";
+    info.nShow = SW_SHOWDEFAULT;
+
+    ShellExecuteEx(&info);
 }
 
 INT_PTR CSmartRenameUI::_DlgProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -396,7 +355,7 @@ void CSmartRenameUI::_OnInitDlg()
 
     m_listview.Init(m_hwndLV);
 
-    // Initialize checkboxes
+    // Initialize checkboxes from flags
     if (m_spsrm)
     {
         DWORD flags = 0;
@@ -456,6 +415,10 @@ void CSmartRenameUI::_OnCommand(_In_ WPARAM wParam, _In_ LPARAM lParam)
 
     case ID_RENAME:
         _OnRename();
+        break;
+
+    case ID_ABOUT:
+        _OnAbout();
         break;
 
     case IDC_EDIT_REPLACEWITH:

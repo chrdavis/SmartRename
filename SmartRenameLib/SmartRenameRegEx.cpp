@@ -219,6 +219,7 @@ HRESULT CSmartRenameRegEx::Replace(_In_ PCWSTR source, _Outptr_ PWSTR* result)
                     if (pos != std::string::npos)
                     {
                         res = sourceToUse.replace(pos, searchTerm.length(), replaceTerm);
+                        pos += replaceTerm.length();
                     }
 
                     if (!(m_flags & MatchAllOccurences))

@@ -4,6 +4,8 @@
 #include <string>
 #include "srwlock.h"
 
+#define DEFAULT_FLAGS MatchAllOccurences
+
 class CSmartRenameRegEx : public ISmartRenameRegEx
 {
 public:
@@ -35,7 +37,7 @@ private:
 
     size_t _Find(std::wstring data, std::wstring toSearch, bool caseInsensitive, size_t pos);
 
-    DWORD m_flags = 0;
+    DWORD m_flags = DEFAULT_FLAGS;
     PWSTR m_searchTerm = nullptr;
     PWSTR m_replaceTerm = nullptr;
 

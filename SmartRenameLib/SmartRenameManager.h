@@ -2,8 +2,6 @@
 #include <vector>
 #include "srwlock.h"
 
-#define DEFAULT_SMART_RENAME_FLAGS 0
-
 class CSmartRenameManager :
     public ISmartRenameManager,
     public ISmartRenameRegExEvents
@@ -93,7 +91,7 @@ private:
     CSRWLock m_lockEvents;
     CSRWLock m_lockItems;
 
-    DWORD m_flags = DEFAULT_SMART_RENAME_FLAGS;
+    DWORD m_flags = 0;
 
     DWORD m_cookie = 0;
     DWORD m_regExAdviseCookie = 0;

@@ -198,6 +198,7 @@ IFACEMETHODIMP CSmartRenameManager::GetRenameItemCount(_Out_ UINT* count)
 
 IFACEMETHODIMP CSmartRenameManager::get_flags(_Out_ DWORD* flags)
 {
+    _EnsureRegEx();
     *flags = m_flags;
     return S_OK;
 }
@@ -804,6 +805,11 @@ HRESULT CSmartRenameManager::_EnsureRegEx()
         if (SUCCEEDED(hr))
         {
             hr = _InitRegEx();
+            // Get the flags
+            if (SUCCEEDED(hr))
+            {
+                m_spRegEx->get_flags(&m_flags);
+            }
         }
     }
     return hr;

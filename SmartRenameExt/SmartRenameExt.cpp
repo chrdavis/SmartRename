@@ -19,8 +19,9 @@ CSmartRenameMenu::~CSmartRenameMenu()
     DllRelease();
 }
 
-HRESULT CSmartRenameMenu::s_CreateInstance(_In_opt_ IUnknown*, _In_ REFIID riid, _Out_ void **ppv)
+HRESULT CSmartRenameMenu::s_CreateInstance(_In_opt_ IUnknown*, _In_ REFIID riid, _Outptr_ void **ppv)
 {
+    *ppv = nullptr;
     HRESULT hr = E_OUTOFMEMORY;
     CSmartRenameMenu *pprm = new CSmartRenameMenu();
     if (pprm)
@@ -136,6 +137,9 @@ DWORD WINAPI CSmartRenameMenu::s_SmartRenameUIThreadProc(_In_ void* pData)
                 spsrui->Show();
                 spsrui->Close();
             }
+
+            // Need to call shutdown to break circular dependencies
+            spsrm->Shutdown();
         }
     }
 
