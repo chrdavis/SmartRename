@@ -163,7 +163,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:SmartRename"
         "ProductCode" = "8:{688CD75D-0CEE-4E10-8552-7AE64CA687C7}"
-        "PackageCode" = "8:{6E6F4A38-A0F9-4898-86E1-0711EA2D6567}"
+        "PackageCode" = "8:{54BA80A6-C8DC-430D-BBDA-8AA4A8F304E4}"
         "UpgradeCode" = "8:{71B5C174-58D2-4287-A3E8-28845BA75862}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"

@@ -22,6 +22,7 @@ int APIENTRY wWinMain(
     HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
     if (SUCCEEDED(hr))
     {
+
         // Create the smart rename manager
         CComPtr<ISmartRenameManager> spsrm;
         if (SUCCEEDED(CSmartRenameManager::s_CreateInstance(&spsrm)))
