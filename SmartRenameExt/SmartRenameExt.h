@@ -52,8 +52,6 @@ public:
 private:
     ~CSmartRenameMenu();
 
-    bool _IsFolder();
-
     long m_refCount = 1;
     CComPtr<IDataObject> m_spdo;
 };

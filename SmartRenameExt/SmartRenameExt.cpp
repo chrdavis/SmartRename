@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "SmartRenameExt.h"
 #include <SmartRenameUI.h>
+#include <SmartRenameItem.h>
 #include <SmartRenameManager.h>
 #include "resource.h"
 
@@ -78,47 +79,6 @@ HRESULT CSmartRenameMenu::InvokeCommand(_In_ LPCMINVOKECOMMANDINFO pici)
     return hr;
 }
 
-bool CSmartRenameMenu::_IsFolder()
-{
-    bool isFolder = false;
-
-    CComPtr<IShellItemArray> spsia;
-    HRESULT hr = SHCreateShellItemArrayFromDataObject(m_spdo, IID_PPV_ARGS(&spsia));
-    if (SUCCEEDED(hr))
-    {
-        CComPtr<IShellItem> spsi;
-        hr = spsia->GetItemAt(0, &spsi);
-        if (SUCCEEDED(hr))
-        {
-            PWSTR filePath = nullptr;
-            hr = spsi->GetDisplayName(SIGDN_FILESYSPATH, &filePath);
-            if (SUCCEEDED(hr))
-            {
-                if (GetFileAttributes(filePath) & FILE_ATTRIBUTE_DIRECTORY)
-                {
-                    isFolder = true;
-                }
-                else
-                {
-                    PCWSTR fileExt = PathFindExtension(filePath);
-                    if (fileExt)
-                    {
-                        isFolder = false;
-                    }
-                }
-
-                CoTaskMemFree(filePath);
-            }
-            else
-            {
-                isFolder = true;
-            }
-        }
-    }
-
-    return isFolder;
-}
-
 DWORD WINAPI CSmartRenameMenu::s_SmartRenameUIThreadProc(_In_ void* pData)
 {
     IStream* pstrm = (IStream*)pData;
@@ -129,13 +89,22 @@ DWORD WINAPI CSmartRenameMenu::s_SmartRenameUIThreadProc(_In_ void* pData)
         CComPtr<ISmartRenameManager> spsrm;
         if (SUCCEEDED(CSmartRenameManager::s_CreateInstance(&spsrm)))
         {
-            // Create the smart rename UI instance and pass the smart rename manager
-            CComPtr<ISmartRenameUI> spsrui;
-            if (SUCCEEDED(CSmartRenameUI::s_CreateInstance(spsrm, spdo, false, &spsrui)))
+            // Create the factory for our items
+            CComPtr<ISmartRenameItemFactory> spsrif;
+            if (SUCCEEDED(CSmartRenameItem::s_CreateInstance(nullptr, IID_PPV_ARGS(&spsrif))))
             {
-                // Call blocks until we are done
-                spsrui->Show();
-                spsrui->Close();
+                // Pass the factory to the manager
+                if (SUCCEEDED(spsrm->put_smartRenameItemFactory(spsrif)))
+                {
+                    // Create the smart rename UI instance and pass the smart rename manager
+                    CComPtr<ISmartRenameUI> spsrui;
+                    if (SUCCEEDED(CSmartRenameUI::s_CreateInstance(spsrm, spdo, false, &spsrui)))
+                    {
+                        // Call blocks until we are done
+                        spsrui->Show();
+                        spsrui->Close();
+                    }
+                }
             }
 
             // Need to call shutdown to break circular dependencies

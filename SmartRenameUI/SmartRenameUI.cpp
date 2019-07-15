@@ -165,9 +165,11 @@ IFACEMETHODIMP CSmartRenameUI::OnRenameCompleted()
 {
     // Enable controls
     EnableWindow(m_hwnd, TRUE);
+
+    // Close the window
+    _OnCloseDlg();
     return S_OK;
 }
-
 
 // IDropTarget
 IFACEMETHODIMP CSmartRenameUI::DragEnter(_In_ IDataObject* pdtobj, DWORD /* grfKeyState */, POINTL pt, _Inout_ DWORD* pdwEffect)

@@ -7,6 +7,7 @@
 #include <SmartRenameItem.h>
 #include <SmartRenameUI.h>
 #include <SmartRenameManager.h>
+#include <Shobjidl.h>
 
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
@@ -17,6 +18,8 @@ HINSTANCE g_hInst;
 
 class __declspec(uuid("{81ADB5B6-F9A4-4320-87B3-D9360F82EC50}")) Foo;
 static const CLSID CLSID_SmartRenameMenu = __uuidof(Foo);
+
+DEFINE_GUID(BHID_DataObject, 0xb8c0bd9f, 0xed24, 0x455c, 0x83, 0xe6, 0xd5, 0x39, 0xc, 0x4f, 0xe8, 0xc4);
 
 int APIENTRY wWinMain(
     _In_ HINSTANCE hInstance,
