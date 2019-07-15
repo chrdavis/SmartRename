@@ -12,6 +12,12 @@
 
 HINSTANCE g_hInst;
 
+// {81ADB5B6-F9A4-4320-87B3-D9360F82EC50}
+//DEFINE_GUID(CLSID_SmartRenameMenu, 0x81ADB5B6, 0xF9A4, 0x4320, 0x87, 0xB3, 0xD9, 0x36, 0x0F, 0x82, 0xEC, 0x50);
+
+class __declspec(uuid("{81ADB5B6-F9A4-4320-87B3-D9360F82EC50}")) Foo;
+static const CLSID CLSID_SmartRenameMenu = __uuidof(Foo);
+
 int APIENTRY wWinMain(
     _In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
@@ -22,7 +28,6 @@ int APIENTRY wWinMain(
     HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
     if (SUCCEEDED(hr))
     {
-
         // Create the smart rename manager
         CComPtr<ISmartRenameManager> spsrm;
         if (SUCCEEDED(CSmartRenameManager::s_CreateInstance(&spsrm)))

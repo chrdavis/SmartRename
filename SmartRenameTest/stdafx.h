@@ -19,5 +19,3 @@
 #include <atlbase.h>
 #include <strsafe.h>
 #include <pathcch.h>
-
-// reference additional headers your program requires here

@@ -104,7 +104,6 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, void*)
 //
 // Checks if there are any external references to this module
 //
-__control_entrypoint(DllExport)
 STDAPI DllCanUnloadNow(void)
 {
     return (g_dwModuleRefCount == 0) ? S_OK : S_FALSE;
@@ -113,7 +112,6 @@ STDAPI DllCanUnloadNow(void)
 //
 // DLL export for creating COM objects
 //
-_Check_return_
 STDAPI DllGetClassObject(_In_ REFCLSID clsid, _In_ REFIID riid, _Outptr_ void **ppv)
 {
     *ppv = NULL;
@@ -127,13 +125,11 @@ STDAPI DllGetClassObject(_In_ REFCLSID clsid, _In_ REFIID riid, _Outptr_ void **
     return hr;
 }
 
-__control_entrypoint(DllExport)
 STDAPI DllRegisterServer()
 {
     return S_OK;
 }
 
-__control_entrypoint(DllExport)
 STDAPI DllUnregisterServer()
 {
     return S_OK;

@@ -80,6 +80,7 @@ IFACEMETHODIMP CSmartRenameUI::Show()
 
 IFACEMETHODIMP CSmartRenameUI::Close()
 {
+    _OnCloseDlg();
     return S_OK;
 }
 
