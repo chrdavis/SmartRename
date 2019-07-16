@@ -371,25 +371,12 @@ void CSmartRenameUI::_OnInitDlg()
         EnumerateDataObject(m_spdo, m_spsrm);
     }
 
-    // TODO: Add dialog icon, image and description to top of dialog?
-
     // Load the main icon
-    /*if (SUCCEEDED(CGraphicsHelper::LoadIconFromModule(g_hInst, IDI_RENAME, 32, 32, &m_iconMain)))
-    {
-        // Convert the icon to a bitmap
-        if (SUCCEEDED(CGraphicsHelper::HBITMAPFromHICON(m_iconMain, &m_BitmapMain)))
-        {
-            // Set the bitmap as the contents of the control on our dialog
-            HGDIOBJ hgdiOld = (HGDIOBJ)SendDlgItemMessage(m_hwnd, IDC_MAIN_IMAGE, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)_hBitmapMain);
-            if (hgdiOld)
-            {
-                DeleteObject(hgdiOld);  // if there was an old one clean it up
-            }
-        }
-        // Update the icon associated with our main app window
-        SendMessage(m_hwnd, WM_SETICON, (WPARAM)ICON_SMALL, (LPARAM)m_iconMain);
-        SendMessage(m_hwnd, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)m_iconMain);
-    }*/
+    LoadIconWithScaleDown(g_hInst, MAKEINTRESOURCE(IDI_RENAME), 32, 32, &m_iconMain);
+
+    // Update the icon associated with our main app window
+    SendMessage(m_hwnd, WM_SETICON, (WPARAM)ICON_SMALL, (LPARAM)m_iconMain);
+    SendMessage(m_hwnd, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)m_iconMain);
 
     // TODO: put this behind a setting?
     if (m_enableDragDrop)
