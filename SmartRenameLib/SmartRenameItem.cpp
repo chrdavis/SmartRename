@@ -85,8 +85,6 @@ IFACEMETHODIMP CSmartRenameItem::put_newName(_In_opt_ PCWSTR newName)
 
 IFACEMETHODIMP CSmartRenameItem::get_newName(_Outptr_ PWSTR* newName)
 {
-    // TODO: check if new name is different than current name?  If so then store it and set a bit saying we will be renamed
-    // TODO: If null then clear it
     CSRWSharedAutoLock lock(&m_lock);
     HRESULT hr = m_newName ? S_OK : E_FAIL;
     if (SUCCEEDED(hr))
@@ -107,14 +105,6 @@ IFACEMETHODIMP CSmartRenameItem::get_isSubFolderContent(_Out_ bool* isSubFolderC
 {
     CSRWSharedAutoLock lock(&m_lock);
     *isSubFolderContent = m_depth > 0;
-    return S_OK;
-}
-
-// TODO: Rename isDirty to something else?
-IFACEMETHODIMP CSmartRenameItem::get_isDirty(_Out_ bool* isDirty)
-{
-    CSRWSharedAutoLock lock(&m_lock);
-    *isDirty = m_isDirty;
     return S_OK;
 }
 
@@ -165,7 +155,8 @@ IFACEMETHODIMP CSmartRenameItem::ShouldRenameItem(_In_ DWORD flags, _Out_ bool* 
     bool excludeBecauseFolder = (m_isFolder && (flags & SmartRenameFlags::ExcludeFolders));
     bool excludeBecauseFile = (!m_isFolder && (flags & SmartRenameFlags::ExcludeFiles));
     bool excludeBecauseSubFolderContent = (m_depth > 0 && (flags & SmartRenameFlags::ExcludeSubfolders));
-    *shouldRename = (m_selected && hasChanged && !excludeBecauseFile && !excludeBecauseFolder && !excludeBecauseSubFolderContent);
+    *shouldRename = (m_selected && hasChanged && !excludeBecauseFile &&
+                     !excludeBecauseFolder && !excludeBecauseSubFolderContent);
 
     return S_OK;
 }
@@ -175,7 +166,6 @@ IFACEMETHODIMP CSmartRenameItem::Reset()
     CSRWSharedAutoLock lock(&m_lock);
     CoTaskMemFree(m_newName);
     m_newName = nullptr;
-    m_isDirty = false;
     return S_OK;
 }
 

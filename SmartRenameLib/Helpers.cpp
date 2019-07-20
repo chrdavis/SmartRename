@@ -15,7 +15,7 @@ HRESULT GetIconIndexFromPath(_In_ PCWSTR path, _Out_ int* index)
         if (himl && shFileInfo.iIcon)
         {
             *index = shFileInfo.iIcon;
-            // I don't need to free the HIMAGELIST.
+            // We shouldn't free the HIMAGELIST.
             hr = S_OK;
         }
     }
@@ -91,16 +91,14 @@ HRESULT EnumerateDataObject(_In_ IDataObject* pdo, _In_ ISmartRenameManager* psr
     return hr;
 }
 
-extern HINSTANCE g_hInst;
-
-HWND CreateMsgWindow(_In_ WNDPROC pfnWndProc, _In_ void* p)
+HWND CreateMsgWindow(_In_ HINSTANCE hInst, _In_ WNDPROC pfnWndProc, _In_ void* p)
 {
     WNDCLASS wc = { 0 };
     PWSTR wndClassName = L"MsgWindow";
 
     wc.lpfnWndProc = DefWindowProc;
     wc.cbWndExtra = sizeof(void*);
-    wc.hInstance = g_hInst;
+    wc.hInstance = hInst;
     wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
     wc.lpszClassName = wndClassName;
 
@@ -109,7 +107,7 @@ HWND CreateMsgWindow(_In_ WNDPROC pfnWndProc, _In_ void* p)
     HWND hwnd = CreateWindowEx(
         0, wndClassName, nullptr, 0,
         0, 0, 0, 0, HWND_MESSAGE,
-        0, g_hInst, nullptr);
+        0, hInst, nullptr);
     if (hwnd)
     {
         SetWindowLongPtr(hwnd, 0, (LONG_PTR)p);

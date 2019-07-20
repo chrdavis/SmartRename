@@ -81,7 +81,7 @@ HRESULT CSmartRenameMenu::InvokeCommand(_In_ LPCMINVOKECOMMANDINFO pici)
 
 DWORD WINAPI CSmartRenameMenu::s_SmartRenameUIThreadProc(_In_ void* pData)
 {
-    IStream* pstrm = (IStream*)pData;
+    IStream* pstrm = static_cast<IStream*>(pData);
     CComPtr<IDataObject> spdo;
     if (SUCCEEDED(CoGetInterfaceAndReleaseStream(pstrm, IID_PPV_ARGS(&spdo))))
     {
@@ -112,5 +112,5 @@ DWORD WINAPI CSmartRenameMenu::s_SmartRenameUIThreadProc(_In_ void* pData)
         }
     }
 
-    return 0; // ignored
+    return 0;
 }

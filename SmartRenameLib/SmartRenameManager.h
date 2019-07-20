@@ -40,9 +40,9 @@ public:
 
     static HRESULT s_CreateInstance(_Outptr_ ISmartRenameManager** ppsrm);
 
-private:
+protected:
     CSmartRenameManager();
-    ~CSmartRenameManager();
+    virtual ~CSmartRenameManager();
 
     HRESULT _Init();
     void _Cleanup();

@@ -7,6 +7,8 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
+extern HINSTANCE g_hInst;
+
 // The default FOF flags to use in the rename operations
 #define FOF_DEFAULTFLAGS (FOF_ALLOWUNDO | FOFX_SHOWELEVATIONPROMPT | FOF_RENAMEONCOLLISION)
 
@@ -307,7 +309,7 @@ HRESULT CSmartRenameManager::_Init()
     m_startRegExWorkerEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
     m_cancelRegExWorkerEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
 
-    m_hwndMessage = CreateMsgWindow(s_msgWndProc, this);
+    m_hwndMessage = CreateMsgWindow(g_hInst, s_msgWndProc, this);
 
     return S_OK;
 }
@@ -399,7 +401,7 @@ HRESULT CSmartRenameManager::_PerformFileOperation()
         return E_FAIL;
     }
 
-    // Wait for any regex thread to finish
+    // Wait for existing regex thread to finish
     _WaitForRegExWorkerThread();
 
     // Create worker thread which will perform the actual rename
@@ -511,7 +513,6 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(_In_ void* pv)
                         // Set the operation flags
                         if (SUCCEEDED(spFileOp->SetOperationFlags(FOF_DEFAULTFLAGS)))
                         {
-                            // TODO: Update with hwnd of UI
                             // Set the parent window
                             if (pwtd->hwndParent)
                             {
@@ -545,8 +546,8 @@ HRESULT CSmartRenameManager::_PerformRegExRename()
 
     if (!TryEnterCriticalSection(&m_critsecReentrancy))
     {
-        // Ensure we do not renter since we pump messages here.
-        // If we do, post a message back to ourselves
+        // Ensure we do not re-enter since we pump messages here.
+        // TODO: If we do, post a message back to ourselves
     }
     else
     {
@@ -676,7 +677,6 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
                                 spRenameRegEx->Replace(sourceName, &newName);
 
                                 wchar_t resultName[MAX_PATH] = { 0 };
-
 
                                 PWSTR newNameToUse = nullptr;
 

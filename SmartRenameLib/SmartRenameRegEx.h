@@ -27,9 +27,9 @@ public:
 
     static HRESULT s_CreateInstance(_Outptr_ ISmartRenameRegEx **renameRegEx);
 
-private:
+protected:
     CSmartRenameRegEx();
-    ~CSmartRenameRegEx();
+    virtual ~CSmartRenameRegEx();
 
     void _OnSearchTermChanged();
     void _OnReplaceTermChanged();

@@ -43,32 +43,9 @@ public:
     }
 
     // IUnknown
-    IFACEMETHODIMP QueryInterface(__in REFIID riid, __deref_out void** ppv)
-    {
-        static const QITAB qit[] =
-        {
-            QITABENT(CSmartRenameUI, ISmartRenameUI),
-            QITABENT(CSmartRenameUI, ISmartRenameManagerEvents),
-            QITABENT(CSmartRenameUI, IDropTarget),
-            { 0 },
-        };
-        return QISearch(this, qit, riid, ppv);
-    }
-
-    IFACEMETHODIMP_(ULONG) AddRef()
-    {
-        return InterlockedIncrement(&m_refCount);
-    }
-
-    IFACEMETHODIMP_(ULONG) Release()
-    {
-        long refCount = InterlockedDecrement(&m_refCount);
-        if (refCount == 0)
-        {
-            delete this;
-        }
-        return refCount;
-    }
+    IFACEMETHODIMP QueryInterface(__in REFIID riid, __deref_out void** ppv);
+    IFACEMETHODIMP_(ULONG) AddRef();
+    IFACEMETHODIMP_(ULONG) Release();
 
     // ISmartRenameUI
     IFACEMETHODIMP Show();

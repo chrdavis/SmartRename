@@ -15,7 +15,7 @@ public:
     }
 
     // IUnknown methods
-    IFACEMETHODIMP QueryInterface(_In_ REFIID riid, _COM_Outptr_ void ** ppv)
+    IFACEMETHODIMP QueryInterface(_In_ REFIID riid, _COM_Outptr_ void** ppv)
     {
         static const QITAB qit[] =
         {
@@ -41,7 +41,7 @@ public:
     }
 
     // IClassFactory methods
-    IFACEMETHODIMP CreateInstance(_In_opt_ IUnknown *punkOuter, _In_ REFIID riid, _Outptr_ void** ppv)
+    IFACEMETHODIMP CreateInstance(_In_opt_ IUnknown* punkOuter, _In_ REFIID riid, _Outptr_ void** ppv)
     {
         *ppv = NULL;
         HRESULT hr;

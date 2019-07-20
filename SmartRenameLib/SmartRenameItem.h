@@ -22,7 +22,6 @@ public:
     IFACEMETHODIMP get_newName(_Outptr_ PWSTR* newName);
     IFACEMETHODIMP get_isFolder(_Out_ bool* isFolder);
     IFACEMETHODIMP get_isSubFolderContent(_Out_ bool* isSubFolderContent);
-    IFACEMETHODIMP get_isDirty(_Out_ bool* isDirty);
     IFACEMETHODIMP get_selected(_Out_ bool* selected);
     IFACEMETHODIMP put_selected(_In_ bool selected);
     IFACEMETHODIMP get_id(_Out_ int* id);
@@ -41,15 +40,13 @@ public:
 public:
     static HRESULT s_CreateInstance(_In_opt_ IShellItem* psi, _In_ REFIID iid, _Outptr_ void** resultInterface);
 
-private:
+protected:
     static int s_id;
     CSmartRenameItem();
-    ~CSmartRenameItem();
+    virtual ~CSmartRenameItem();
 
     HRESULT _Init(_In_ IShellItem* psi);
 
-private:
-    bool     m_isDirty = false;
     bool     m_selected = true;
     bool     m_isFolder = false;
     int      m_id = -1;

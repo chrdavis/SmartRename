@@ -42,15 +42,32 @@ FlagCheckboxMap g_flagCheckboxMap[] =
     { ExtensionOnly, IDC_CHECK_EXTENSIONONLY }
 };
 
-HRESULT CSmartRenameUI::_DoModal(__in_opt HWND hwnd)
+// IUnknown
+IFACEMETHODIMP CSmartRenameUI::QueryInterface(__in REFIID riid, __deref_out void** ppv)
 {
-    HRESULT hr = S_OK;
-    INT_PTR ret = DialogBoxParam(g_hInst, MAKEINTRESOURCE(IDD_MAIN), hwnd, s_DlgProc, (LPARAM)this);
-    if (ret < 0)
+    static const QITAB qit[] =
     {
-        hr = HRESULT_FROM_WIN32(GetLastError());
+        QITABENT(CSmartRenameUI, ISmartRenameUI),
+        QITABENT(CSmartRenameUI, ISmartRenameManagerEvents),
+        QITABENT(CSmartRenameUI, IDropTarget),
+        { 0 },
+    };
+    return QISearch(this, qit, riid, ppv);
+}
+
+IFACEMETHODIMP_(ULONG) CSmartRenameUI::AddRef()
+{
+    return InterlockedIncrement(&m_refCount);
+}
+
+IFACEMETHODIMP_(ULONG) CSmartRenameUI::Release()
+{
+    long refCount = InterlockedDecrement(&m_refCount);
+    if (refCount == 0)
+    {
+        delete this;
     }
-    return hr;
+    return refCount;
 }
 
 HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _In_ bool enableDragDrop, _Outptr_ ISmartRenameUI** ppsrui)
@@ -72,7 +89,6 @@ HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt
 }
 
 // ISmartRenameUI
-
 IFACEMETHODIMP CSmartRenameUI::Show()
 {
     return _DoModal(NULL);
@@ -102,6 +118,7 @@ IFACEMETHODIMP CSmartRenameUI::get_showUI(_Out_ bool* showUI)
     return S_OK;
 }
 
+// ISmartRenameManagerEvents
 IFACEMETHODIMP CSmartRenameUI::OnItemAdded(_In_ ISmartRenameItem* pItem)
 {
     DWORD flags = 0;
@@ -298,7 +315,6 @@ void CSmartRenameUI::_OnDestroyDlg()
 
 void CSmartRenameUI::_OnRename()
 {
-    // TODO: Update UI to show we are renaming (disable controls)
     if (m_spsrm)
     {
         m_spsrm->Rename(m_hwnd);
@@ -315,6 +331,17 @@ void CSmartRenameUI::_OnAbout()
     info.nShow = SW_SHOWDEFAULT;
 
     ShellExecuteEx(&info);
+}
+
+HRESULT CSmartRenameUI::_DoModal(__in_opt HWND hwnd)
+{
+    HRESULT hr = S_OK;
+    INT_PTR ret = DialogBoxParam(g_hInst, MAKEINTRESOURCE(IDD_MAIN), hwnd, s_DlgProc, (LPARAM)this);
+    if (ret < 0)
+    {
+        hr = HRESULT_FROM_WIN32(GetLastError());
+    }
+    return hr;
 }
 
 INT_PTR CSmartRenameUI::_DlgProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -674,7 +701,6 @@ HRESULT CSmartRenameListView::UpdateItemCheckState(_In_ ISmartRenameManager* psr
     return hr;
 }
 
-// TODO: LPARAM should store id of item instead of pointer to interface
 HRESULT CSmartRenameListView::GetItemByIndex(_In_ ISmartRenameManager* psrm, _In_ int nIndex, _Out_ ISmartRenameItem** ppItem)
 {
     *ppItem = nullptr;
@@ -687,8 +713,7 @@ HRESULT CSmartRenameListView::GetItemByIndex(_In_ ISmartRenameManager* psrm, _In
         lvItem.mask = LVIF_PARAM;
         if (ListView_GetItem(m_hwndLV, &lvItem))
         {
-            int id = static_cast<int>(lvItem.lParam);
-            hr = psrm->GetItemById(id, ppItem);
+            hr = psrm->GetItemById(static_cast<int>(lvItem.lParam), ppItem);
         }
     }
 
