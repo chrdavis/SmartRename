@@ -182,6 +182,8 @@ CSmartRenameRegEx::~CSmartRenameRegEx()
 HRESULT CSmartRenameRegEx::Replace(_In_ PCWSTR source, _Outptr_ PWSTR* result)
 {
     *result = nullptr;
+
+    CSRWSharedAutoLock lock(&m_lock);
     HRESULT hr = (source && wcslen(source) > 0 && m_searchTerm && wcslen(m_searchTerm) > 0) ? S_OK : E_INVALIDARG;
     if (SUCCEEDED(hr))
     {

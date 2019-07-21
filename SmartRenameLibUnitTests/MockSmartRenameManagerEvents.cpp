@@ -30,41 +30,49 @@ IFACEMETHODIMP_(ULONG) CMockSmartRenameManagerEvents::Release()
 // ISmartRenameManagerEvents
 IFACEMETHODIMP CMockSmartRenameManagerEvents::OnItemAdded(_In_ ISmartRenameItem* pItem)
 {
+    m_itemAdded = pItem;
     return S_OK;
 }
 
 IFACEMETHODIMP CMockSmartRenameManagerEvents::OnUpdate(_In_ ISmartRenameItem* pItem)
 {
+    m_itemUpdated = pItem;
     return S_OK;
 }
 
-IFACEMETHODIMP CMockSmartRenameManagerEvents::OnError(_In_ ISmartRenameItem*)
+IFACEMETHODIMP CMockSmartRenameManagerEvents::OnError(_In_ ISmartRenameItem* pItem)
 {
+    m_itemError = pItem;
     return S_OK;
 }
 
 IFACEMETHODIMP CMockSmartRenameManagerEvents::OnRegExStarted()
 {
+    m_regExStarted = true;
     return S_OK;
 }
 
 IFACEMETHODIMP CMockSmartRenameManagerEvents::OnRegExCanceled()
 {
+    m_regExCanceled = true;
     return S_OK;
 }
 
 IFACEMETHODIMP CMockSmartRenameManagerEvents::OnRegExCompleted()
 {
+    m_regExCompleted = true;
     return S_OK;
 }
 
 IFACEMETHODIMP CMockSmartRenameManagerEvents::OnRenameStarted()
 {
+    m_renameStarted = true;
     return S_OK;
 }
 
 IFACEMETHODIMP CMockSmartRenameManagerEvents::OnRenameCompleted()
 {
+    m_renameCompleted = true;
     return S_OK;
 }
 

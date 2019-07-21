@@ -579,12 +579,14 @@ void CSmartRenameUI::_ValidateFlagCheckbox(_In_ DWORD checkBoxId)
     }
 }
 
+// TODO: This is CPU intensive and blocks the UI thread.  Do this work on the background thread
 void CSmartRenameUI::_UpdateCounts()
 {
     UINT selectedCount = 0;
     UINT renamingCount = 0;
     if (m_spsrm)
     {
+        // These calls are expensive when we have thousands of items
         m_spsrm->GetSelectedItemCount(&selectedCount);
         m_spsrm->GetRenameItemCount(&renamingCount);
     }

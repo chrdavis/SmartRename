@@ -2,6 +2,7 @@
 #include "CppUnitTest.h"
 #include <SmartRenameInterfaces.h>
 #include <SmartRenameRegEx.h>
+#include "MockSmartRenameRegExEvents.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -259,6 +260,26 @@ namespace SmartRenameRegExTests
                 Assert::IsTrue(wcscmp(result, sreTable[i].expected) == 0);
                 CoTaskMemFree(result);
             }
+        }
+
+        TEST_METHOD(VerifyEventsFire)
+        {
+            CComPtr<ISmartRenameRegEx> renameRegEx;
+            Assert::IsTrue(CSmartRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+            CMockSmartRenameRegExEvents* mockEvents = new CMockSmartRenameRegExEvents();
+            CComPtr<ISmartRenameRegExEvents> regExEvents;
+            Assert::IsTrue(mockEvents->QueryInterface(IID_PPV_ARGS(&regExEvents)) == S_OK);
+            DWORD cookie = 0;
+            Assert::IsTrue(renameRegEx->Advise(regExEvents, &cookie) == S_OK);
+            DWORD flags = MatchAllOccurences | UseRegularExpressions | CaseSensitive;
+            Assert::IsTrue(renameRegEx->put_flags(flags) == S_OK);
+            Assert::IsTrue(renameRegEx->put_searchTerm(L"FOO") == S_OK);
+            Assert::IsTrue(renameRegEx->put_replaceTerm(L"BAR") == S_OK);
+            Assert::IsTrue(lstrcmpi(L"FOO", mockEvents->m_searchTerm) == 0);
+            Assert::IsTrue(lstrcmpi(L"BAR", mockEvents->m_replaceTerm) == 0);
+            Assert::IsTrue(flags == mockEvents->m_flags);
+            Assert::IsTrue(renameRegEx->UnAdvise(cookie) == S_OK);
+            mockEvents->Release();
         }
     };
 }

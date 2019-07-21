@@ -135,6 +135,7 @@ IFACEMETHODIMP CSmartRenameManager::GetItemByIndex(_In_ UINT index, _COM_Outptr_
     return hr;
 }
 
+// This takes up most of our CPU.  Change to a lookup table/map or some other fast way of looking up by id
 IFACEMETHODIMP CSmartRenameManager::GetItemById(_In_ int id, _COM_Outptr_ ISmartRenameItem** ppItem)
 {
     *ppItem = nullptr;

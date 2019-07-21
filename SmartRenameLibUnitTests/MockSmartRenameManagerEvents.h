@@ -31,5 +31,13 @@ public:
     {
     }
 
+    CComPtr<ISmartRenameItem> m_itemAdded;
+    CComPtr<ISmartRenameItem> m_itemUpdated;
+    CComPtr<ISmartRenameItem> m_itemError;
+    bool m_regExStarted = false;
+    bool m_regExCanceled = false;
+    bool m_regExCompleted = false;
+    bool m_renameStarted = false;
+    bool m_renameCompleted = false;
     long m_refCount = 0;
 };
