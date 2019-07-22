@@ -46,19 +46,19 @@ IFACEMETHODIMP CMockSmartRenameManagerEvents::OnError(_In_ ISmartRenameItem* pIt
     return S_OK;
 }
 
-IFACEMETHODIMP CMockSmartRenameManagerEvents::OnRegExStarted()
+IFACEMETHODIMP CMockSmartRenameManagerEvents::OnRegExStarted(_In_ DWORD threadId)
 {
     m_regExStarted = true;
     return S_OK;
 }
 
-IFACEMETHODIMP CMockSmartRenameManagerEvents::OnRegExCanceled()
+IFACEMETHODIMP CMockSmartRenameManagerEvents::OnRegExCanceled(_In_ DWORD threadId)
 {
     m_regExCanceled = true;
     return S_OK;
 }
 
-IFACEMETHODIMP CMockSmartRenameManagerEvents::OnRegExCompleted()
+IFACEMETHODIMP CMockSmartRenameManagerEvents::OnRegExCompleted(_In_ DWORD threadId)
 {
     m_regExCompleted = true;
     return S_OK;

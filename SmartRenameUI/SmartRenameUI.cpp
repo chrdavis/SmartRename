@@ -150,24 +150,33 @@ IFACEMETHODIMP CSmartRenameUI::OnError(_In_ ISmartRenameItem*)
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameUI::OnRegExStarted()
+IFACEMETHODIMP CSmartRenameUI::OnRegExStarted(_In_ DWORD threadId)
 {
-    // Disable list view
+    m_disableCountUpdate = true;
+    m_currentRegExId = threadId;
     _UpdateCounts();
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameUI::OnRegExCanceled()
+IFACEMETHODIMP CSmartRenameUI::OnRegExCanceled(_In_ DWORD threadId)
 {
-    // Enable list view
-    _UpdateCounts();
+    if (m_currentRegExId == threadId)
+    {
+        m_disableCountUpdate = false;
+        _UpdateCounts();
+    }
+
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameUI::OnRegExCompleted()
+IFACEMETHODIMP CSmartRenameUI::OnRegExCompleted(_In_ DWORD threadId)
 {
     // Enable list view
-    _UpdateCounts();
+    if (m_currentRegExId == threadId)
+    {
+        m_disableCountUpdate = false;
+        _UpdateCounts();
+    }
     return S_OK;
 }
 
@@ -237,7 +246,10 @@ IFACEMETHODIMP CSmartRenameUI::Drop(_In_ IDataObject* pdtobj, DWORD, POINTL pt, 
     // Enumerate the data object and popuplate the manager
     if (m_spsrm)
     {
+        m_disableCountUpdate = true;
         EnumerateDataObject(pdtobj, m_spsrm);
+        m_disableCountUpdate = false;
+        _UpdateCounts();
     }
 
     return S_OK;
@@ -395,7 +407,9 @@ void CSmartRenameUI::_OnInitDlg()
 
     if (m_spdo && m_spsrm)
     {
+        m_disableCountUpdate = true;
         EnumerateDataObject(m_spdo, m_spsrm);
+        m_disableCountUpdate = false;
     }
 
     // Load the main icon
@@ -579,14 +593,19 @@ void CSmartRenameUI::_ValidateFlagCheckbox(_In_ DWORD checkBoxId)
     }
 }
 
-// TODO: This is CPU intensive and blocks the UI thread.  Do this work on the background thread
 void CSmartRenameUI::_UpdateCounts()
 {
+    // This method is CPU intensive.  We disable it during certain operations
+    // for performance reasons.
+    if (m_disableCountUpdate)
+    {
+        return;
+    }
+
     UINT selectedCount = 0;
     UINT renamingCount = 0;
     if (m_spsrm)
     {
-        // These calls are expensive when we have thousands of items
         m_spsrm->GetSelectedItemCount(&selectedCount);
         m_spsrm->GetRenameItemCount(&renamingCount);
     }

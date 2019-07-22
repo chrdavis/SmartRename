@@ -19,9 +19,9 @@ public:
     IFACEMETHODIMP OnItemAdded(_In_ ISmartRenameItem* renameItem);
     IFACEMETHODIMP OnUpdate(_In_ ISmartRenameItem* renameItem);
     IFACEMETHODIMP OnError(_In_ ISmartRenameItem* renameItem);
-    IFACEMETHODIMP OnRegExStarted();
-    IFACEMETHODIMP OnRegExCanceled();
-    IFACEMETHODIMP OnRegExCompleted();
+    IFACEMETHODIMP OnRegExStarted(_In_ DWORD threadId);
+    IFACEMETHODIMP OnRegExCanceled(_In_ DWORD threadId);
+    IFACEMETHODIMP OnRegExCompleted(_In_ DWORD threadId);
     IFACEMETHODIMP OnRenameStarted();
     IFACEMETHODIMP OnRenameCompleted();
 

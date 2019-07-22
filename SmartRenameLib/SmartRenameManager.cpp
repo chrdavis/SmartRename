@@ -108,16 +108,27 @@ IFACEMETHODIMP CSmartRenameManager::Shutdown()
 
 IFACEMETHODIMP CSmartRenameManager::AddItem(_In_ ISmartRenameItem* pItem)
 {
+    HRESULT hr = E_FAIL;
     // Scope lock
     {
         CSRWExclusiveAutoLock lock(&m_lockItems);
-        m_smartRenameItems.push_back(pItem);
-        pItem->AddRef();
+        int id = 0;
+        pItem->get_id(&id);
+        // Verify the item isn't already added
+        if (m_smartRenameItems.find(id) == m_smartRenameItems.end())
+        {
+            m_smartRenameItems[id] = pItem;
+            pItem->AddRef();
+            hr = S_OK;
+        }
     }
 
-    _OnItemAdded(pItem);
+    if (SUCCEEDED(hr))
+    {
+        _OnItemAdded(pItem);
+    }
 
-    return S_OK;
+    return hr;
 }
 
 IFACEMETHODIMP CSmartRenameManager::GetItemByIndex(_In_ UINT index, _COM_Outptr_ ISmartRenameItem** ppItem)
@@ -127,7 +138,9 @@ IFACEMETHODIMP CSmartRenameManager::GetItemByIndex(_In_ UINT index, _COM_Outptr_
     HRESULT hr = E_FAIL;
     if (index < m_smartRenameItems.size())
     {
-        *ppItem = m_smartRenameItems.at(index);
+        std::map<int, ISmartRenameItem*>::iterator it = m_smartRenameItems.begin();
+        std::advance(it, index);
+        *ppItem = it->second;
         (*ppItem)->AddRef();
         hr = S_OK;
     }
@@ -135,23 +148,17 @@ IFACEMETHODIMP CSmartRenameManager::GetItemByIndex(_In_ UINT index, _COM_Outptr_
     return hr;
 }
 
-// This takes up most of our CPU.  Change to a lookup table/map or some other fast way of looking up by id
 IFACEMETHODIMP CSmartRenameManager::GetItemById(_In_ int id, _COM_Outptr_ ISmartRenameItem** ppItem)
 {
     *ppItem = nullptr;
 
     CSRWSharedAutoLock lock(&m_lockItems);
     HRESULT hr = E_FAIL;
-    auto iterator = std::find_if(m_smartRenameItems.begin(), m_smartRenameItems.end(), [id](_In_ ISmartRenameItem* currentItem)
-        {
-            int idCurrent;
-            currentItem->get_id(&idCurrent);
-            return (idCurrent == id);
-        });
-
-    if (iterator != m_smartRenameItems.end())
+    std::map<int, ISmartRenameItem*>::iterator it;
+    it = m_smartRenameItems.find(id);
+    if (it !=  m_smartRenameItems.end())
     {
-        *ppItem = (*iterator);
+        *ppItem = m_smartRenameItems[id];
         (*ppItem)->AddRef();
         hr = S_OK;
     }
@@ -170,15 +177,17 @@ IFACEMETHODIMP CSmartRenameManager::GetSelectedItemCount(_Out_ UINT* count)
 {
     *count = 0;
     CSRWSharedAutoLock lock(&m_lockItems);
-    auto isSelected = [count](_In_ ISmartRenameItem* currentItem)
+
+    for (std::map<int, ISmartRenameItem*>::iterator it = m_smartRenameItems.begin(); it != m_smartRenameItems.end(); ++it)
     {
+        ISmartRenameItem* pItem = it->second;
         bool selected = false;
-        if (SUCCEEDED(currentItem->get_selected(&selected)) && selected)
+        if (SUCCEEDED(pItem->get_selected(&selected)) && selected)
         {
             (*count)++;
         }
-    };
-    std::for_each(m_smartRenameItems.begin(), m_smartRenameItems.end(), isSelected);
+    }
+
     return S_OK;
 }
 
@@ -186,16 +195,17 @@ IFACEMETHODIMP CSmartRenameManager::GetRenameItemCount(_Out_ UINT* count)
 {
     *count = 0;
     CSRWSharedAutoLock lock(&m_lockItems);
-    DWORD flags = m_flags;
-    auto willRename = [count, flags](_In_ ISmartRenameItem* currentItem)
+
+    for (std::map<int, ISmartRenameItem*>::iterator it = m_smartRenameItems.begin(); it != m_smartRenameItems.end(); ++it)
     {
+        ISmartRenameItem* pItem = it->second;
         bool shouldRename = false;
-        if (SUCCEEDED(currentItem->ShouldRenameItem(flags, &shouldRename)) && shouldRename)
+        if (SUCCEEDED(pItem->ShouldRenameItem(m_flags, &shouldRename)) && shouldRename)
         {
             (*count)++;
         }
-    };
-    std::for_each(m_smartRenameItems.begin(), m_smartRenameItems.end(), willRename);
+    }
+ 
     return S_OK;
 }
 
@@ -319,6 +329,7 @@ HRESULT CSmartRenameManager::_Init()
 enum
 {
     SRM_REGEX_ITEM_UPDATED = (WM_APP + 1),  // Single smart rename item processed by regex worker thread
+    SRM_REGEX_STARTED,                      // RegEx operation was started
     SRM_REGEX_CANCELED,                     // Regex operation was canceled
     SRM_REGEX_COMPLETE,                     // Regex worker thread completed
     SRM_FILEOP_COMPLETE                     // File Operation worker thread completed
@@ -374,13 +385,16 @@ LRESULT CSmartRenameManager::_WndProc(_In_ HWND hwnd, _In_ UINT msg, _In_ WPARAM
         }
         break;
     }
+    case SRM_REGEX_STARTED:
+        _OnRegExStarted(static_cast<DWORD>(wParam));
+        break;
 
     case SRM_REGEX_CANCELED:
-        _OnRegExCanceled();
+        _OnRegExCanceled(static_cast<DWORD>(wParam));
         break;
 
     case SRM_REGEX_COMPLETE:
-        _OnRegExCompleted();
+        _OnRegExCompleted(static_cast<DWORD>(wParam));
         break;
 
     default:
@@ -561,8 +575,6 @@ HRESULT CSmartRenameManager::_PerformRegExRename()
         {
             ResetEvent(m_cancelRegExWorkerEvent);
 
-            _OnRegExStarted();
-
             // Signal the worker thread that they can start working. We needed to wait until we
             // were ready to process thread messages.
             SetEvent(m_startRegExWorkerEvent);
@@ -601,6 +613,8 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
         WorkerThreadData* pwtd = reinterpret_cast<WorkerThreadData*>(pv);
         if (pwtd)
         {
+            PostMessage(pwtd->hwndManager, SRM_REGEX_STARTED, GetCurrentThreadId(), 0);
+
             // Wait to be told we can begin
             if (WaitForSingleObject(pwtd->startEvent, INFINITE) == WAIT_OBJECT_0)
             {
@@ -875,7 +889,7 @@ void CSmartRenameManager::_OnError(_In_ ISmartRenameItem* renameItem)
     }
 }
 
-void CSmartRenameManager::_OnRegExStarted()
+void CSmartRenameManager::_OnRegExStarted(_In_ DWORD threadId)
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
@@ -883,12 +897,12 @@ void CSmartRenameManager::_OnRegExStarted()
     {
         if (it->pEvents)
         {
-            it->pEvents->OnRegExStarted();
+            it->pEvents->OnRegExStarted(threadId);
         }
     }
 }
 
-void CSmartRenameManager::_OnRegExCanceled()
+void CSmartRenameManager::_OnRegExCanceled(_In_ DWORD threadId)
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
@@ -896,12 +910,12 @@ void CSmartRenameManager::_OnRegExCanceled()
     {
         if (it->pEvents)
         {
-            it->pEvents->OnRegExCanceled();
+            it->pEvents->OnRegExCanceled(threadId);
         }
     }
 }
 
-void CSmartRenameManager::_OnRegExCompleted()
+void CSmartRenameManager::_OnRegExCompleted(_In_ DWORD threadId)
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
@@ -909,7 +923,7 @@ void CSmartRenameManager::_OnRegExCompleted()
     {
         if (it->pEvents)
         {
-            it->pEvents->OnRegExCompleted();
+            it->pEvents->OnRegExCompleted(threadId);
         }
     }
 }
@@ -963,9 +977,9 @@ void CSmartRenameManager::_ClearSmartRenameItems()
     CSRWExclusiveAutoLock lock(&m_lockItems);
 
     // Cleanup smart rename items
-    for (std::vector<ISmartRenameItem*>::iterator it = m_smartRenameItems.begin(); it != m_smartRenameItems.end(); ++it)
+    for (std::map<int, ISmartRenameItem*>::iterator it = m_smartRenameItems.begin(); it != m_smartRenameItems.end(); ++it)
     {
-        ISmartRenameItem* pItem = *it;
+        ISmartRenameItem* pItem = it->second;
         pItem->Release();
     }
 

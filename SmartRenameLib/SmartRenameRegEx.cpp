@@ -85,18 +85,20 @@ IFACEMETHODIMP CSmartRenameRegEx::get_searchTerm(_Outptr_ PWSTR* searchTerm)
 
 IFACEMETHODIMP CSmartRenameRegEx::put_searchTerm(_In_ PCWSTR searchTerm)
 {
+    bool changed = false;
     HRESULT hr = searchTerm ? S_OK : E_INVALIDARG;
     if (SUCCEEDED(hr))
     {
         CSRWExclusiveAutoLock lock(&m_lock);
         if (m_searchTerm == nullptr || lstrcmp(searchTerm, m_searchTerm) != 0)
         {
+            changed = true;
             CoTaskMemFree(m_searchTerm);
             hr = SHStrDup(searchTerm, &m_searchTerm);
         }
     }
 
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && changed)
     {
         _OnSearchTermChanged();
     }
@@ -118,19 +120,20 @@ IFACEMETHODIMP CSmartRenameRegEx::get_replaceTerm(_Outptr_ PWSTR* replaceTerm)
 
 IFACEMETHODIMP CSmartRenameRegEx::put_replaceTerm(_In_ PCWSTR replaceTerm)
 {
+    bool changed = false;
     HRESULT hr = replaceTerm ? S_OK : E_INVALIDARG;
     if (SUCCEEDED(hr))
     {
-
         CSRWExclusiveAutoLock lock(&m_lock);
         if (m_replaceTerm == nullptr || lstrcmp(replaceTerm, m_replaceTerm) != 0)
         {
+            changed = true;
             CoTaskMemFree(m_replaceTerm);
             hr = SHStrDup(replaceTerm, &m_replaceTerm);
         }
     }
 
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && changed)
     {
         _OnReplaceTermChanged();
     }
@@ -171,6 +174,9 @@ HRESULT CSmartRenameRegEx::s_CreateInstance(_Outptr_ ISmartRenameRegEx** renameR
 CSmartRenameRegEx::CSmartRenameRegEx() :
     m_refCount(1)
 {
+    // Init to empty strings
+    SHStrDup(L"", &m_searchTerm);
+    SHStrDup(L"", &m_replaceTerm);
 }
 
 CSmartRenameRegEx::~CSmartRenameRegEx()

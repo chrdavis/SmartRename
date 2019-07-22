@@ -58,9 +58,9 @@ public:
     IFACEMETHODIMP OnItemAdded(_In_ ISmartRenameItem* renameItem);
     IFACEMETHODIMP OnUpdate(_In_ ISmartRenameItem* renameItem);
     IFACEMETHODIMP OnError(_In_ ISmartRenameItem* renameItem);
-    IFACEMETHODIMP OnRegExStarted();
-    IFACEMETHODIMP OnRegExCanceled();
-    IFACEMETHODIMP OnRegExCompleted();
+    IFACEMETHODIMP OnRegExStarted(_In_ DWORD threadId);
+    IFACEMETHODIMP OnRegExCanceled(_In_ DWORD threadId);
+    IFACEMETHODIMP OnRegExCompleted(_In_ DWORD threadId);
     IFACEMETHODIMP OnRenameStarted();
     IFACEMETHODIMP OnRenameCompleted();
 
@@ -120,10 +120,12 @@ private:
     long m_refCount = 0;
     bool m_initialized = false;
     bool m_enableDragDrop = false;
+    bool m_disableCountUpdate = false;
     HWND m_hwnd = nullptr;
     HWND m_hwndLV = nullptr;
     HICON m_iconMain = nullptr;
     DWORD m_cookie = 0;
+    DWORD m_currentRegExId = 0;
     UINT m_selectedCount = 0;
     UINT m_renamingCount = 0;
     CComPtr<ISmartRenameManager> m_spsrm;

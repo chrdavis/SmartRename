@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <map>
 #include "srwlock.h"
 
 class CSmartRenameManager :
@@ -52,9 +53,9 @@ protected:
     void _OnItemAdded(_In_ ISmartRenameItem* renameItem);
     void _OnUpdate(_In_ ISmartRenameItem* renameItem);
     void _OnError(_In_ ISmartRenameItem* renameItem);
-    void _OnRegExStarted();
-    void _OnRegExCanceled();
-    void _OnRegExCompleted();
+    void _OnRegExStarted(_In_ DWORD threadId);
+    void _OnRegExCanceled(_In_ DWORD threadId);
+    void _OnRegExCompleted(_In_ DWORD threadId);
     void _OnRenameStarted();
     void _OnRenameCompleted();
 
@@ -106,7 +107,7 @@ protected:
     CComPtr<ISmartRenameRegEx> m_spRegEx;
 
     _Guarded_by_(m_lockEvents) std::vector<SMART_RENAME_MGR_EVENT> m_SmartRenameManagerEvents;
-    _Guarded_by_(m_lockItems) std::vector<ISmartRenameItem*> m_smartRenameItems;
+    _Guarded_by_(m_lockItems) std::map<int, ISmartRenameItem*> m_smartRenameItems;
 
     // Parent HWND used by IFileOperation
     HWND m_hwndParent = nullptr;

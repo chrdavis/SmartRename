@@ -69,9 +69,9 @@ public:
     IFACEMETHOD(OnItemAdded)(_In_ ISmartRenameItem* renameItem) = 0;
     IFACEMETHOD(OnUpdate)(_In_ ISmartRenameItem* renameItem) = 0;
     IFACEMETHOD(OnError)(_In_ ISmartRenameItem* renameItem) = 0;
-    IFACEMETHOD(OnRegExStarted)() = 0;
-    IFACEMETHOD(OnRegExCanceled)() = 0;
-    IFACEMETHOD(OnRegExCompleted)() = 0;
+    IFACEMETHOD(OnRegExStarted)(_In_ DWORD threadId) = 0;
+    IFACEMETHOD(OnRegExCanceled)(_In_ DWORD threadId) = 0;
+    IFACEMETHOD(OnRegExCompleted)(_In_ DWORD threadId) = 0;
     IFACEMETHOD(OnRenameStarted)() = 0;
     IFACEMETHOD(OnRenameCompleted)() = 0;
 };
