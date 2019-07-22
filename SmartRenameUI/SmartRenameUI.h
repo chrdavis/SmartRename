@@ -17,6 +17,7 @@ public:
     HRESULT ToggleAll(_In_ bool selected);
     HRESULT UpdateItemCheckState(_In_ ISmartRenameManager* psrm, _In_ int iItem);
     HRESULT GetItemByIndex(_In_ ISmartRenameManager* psrm, _In_ int nIndex, _Out_ ISmartRenameItem** ppItem);
+    HRESULT SetRedraw(_In_ BOOL redraw);
     HWND GetHWND() { return m_hwndLV; }
 
 private:

@@ -766,6 +766,7 @@ HRESULT CSmartRenameListView::UpdateItems(_In_ ISmartRenameManager* psrm)
     return hr;
 }
 
+// TODO: consider switching to a virtual list-view style
 HRESULT CSmartRenameListView::InsertItem(_In_ ISmartRenameItem* pItem, _In_ DWORD flags)
 {
     HRESULT hr = E_INVALIDARG;
@@ -853,6 +854,8 @@ HRESULT CSmartRenameListView::_InsertItems(_In_ ISmartRenameManager* psrm)
         DWORD flags = 0;
         psrm->get_flags(&flags);
 
+        SetRedraw(FALSE);
+
         // Loop through our list of items to rename
         UINT itemCount = 0;
         hr = psrm->GetItemCount(&itemCount);
@@ -866,6 +869,8 @@ HRESULT CSmartRenameListView::_InsertItems(_In_ ISmartRenameManager* psrm)
                 hr = InsertItem(spItem, flags);
             }
         }
+
+        SetRedraw(TRUE);
     }
 
     return hr;
@@ -1028,6 +1033,12 @@ HRESULT CSmartRenameListView::_FindItemByParam(__in LPARAM lParam, __out int* pi
     }
 
     return hr;
+}
+
+HRESULT CSmartRenameListView::SetRedraw(_In_ BOOL redraw)
+{
+    SendMessage(m_hwndLV, WM_SETREDRAW, static_cast<WPARAM>(redraw), 0);
+    return S_OK;
 }
 
 
