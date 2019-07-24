@@ -119,28 +119,19 @@ IFACEMETHODIMP CSmartRenameUI::get_showUI(_Out_ bool* showUI)
 }
 
 // ISmartRenameManagerEvents
-IFACEMETHODIMP CSmartRenameUI::OnItemAdded(_In_ ISmartRenameItem* pItem)
+IFACEMETHODIMP CSmartRenameUI::OnItemAdded(_In_ ISmartRenameItem*)
 {
-    DWORD flags = 0;
-    if (m_spsrm)
-    {
-        m_spsrm->get_flags(&flags);
-    }
-
-    m_listview.InsertItem(pItem, flags);
-    _UpdateCounts();
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameUI::OnUpdate(_In_ ISmartRenameItem* pItem)
+IFACEMETHODIMP CSmartRenameUI::OnUpdate(_In_ ISmartRenameItem*)
 {
-    DWORD flags = 0;
+    UINT itemCount = 0;
     if (m_spsrm)
     {
-        m_spsrm->get_flags(&flags);
+        m_spsrm->GetItemCount(&itemCount);
     }
-
-    m_listview.UpdateItem(pItem, flags);
+    m_listview.RedrawItems(0, itemCount);
     _UpdateCounts();
     return S_OK;
 }
@@ -243,13 +234,10 @@ IFACEMETHODIMP CSmartRenameUI::Drop(_In_ IDataObject* pdtobj, DWORD, POINTL pt, 
     EnableWindow(GetDlgItem(m_hwnd, ID_RENAME), TRUE);
     EnableWindow(m_hwndLV, TRUE);
 
-    // Enumerate the data object and popuplate the manager
+    // Populate the manager from the data object
     if (m_spsrm)
     {
-        m_disableCountUpdate = true;
-        EnumerateDataObject(pdtobj, m_spsrm);
-        m_disableCountUpdate = false;
-        _UpdateCounts();
+        _EnumerateItems(pdtobj);
     }
 
     return S_OK;
@@ -295,6 +283,23 @@ void CSmartRenameUI::_Cleanup()
     if (m_enableDragDrop)
     {
         RevokeDragDrop(m_hwnd);
+    }
+}
+
+void CSmartRenameUI::_EnumerateItems(_In_ IDataObject* pdtobj)
+{
+    // Enumerate the data object and popuplate the manager
+    if (m_spsrm)
+    {
+        m_disableCountUpdate = true;
+        EnumerateDataObject(pdtobj, m_spsrm);
+        m_disableCountUpdate = false;
+
+        UINT itemCount = 0;
+        m_spsrm->GetItemCount(&itemCount);
+        m_listview.SetItemCount(itemCount);
+
+        _UpdateCounts();
     }
 }
 
@@ -405,11 +410,10 @@ void CSmartRenameUI::_OnInitDlg()
         _SetCheckboxesFromFlags(flags);
     }
 
-    if (m_spdo && m_spsrm)
+    if (m_spdo)
     {
-        m_disableCountUpdate = true;
-        EnumerateDataObject(m_spdo, m_spsrm);
-        m_disableCountUpdate = false;
+        // Populate the manager from the data object
+        _EnumerateItems(m_spdo);
     }
 
     // Load the main icon
@@ -491,7 +495,11 @@ BOOL CSmartRenameUI::_OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam)
         switch (pnmdr->code)
         {
         case HDN_ITEMSTATEICONCLICK:
-            ListView_SetCheckState(m_hwndLV, -1, (!(((LPNMHEADER)lParam)->pitem->fmt & HDF_CHECKED)));
+            if (m_spsrm)
+            {
+                m_listview.ToggleAll(m_spsrm, (!(((LPNMHEADER)lParam)->pitem->fmt & HDF_CHECKED)));
+                _UpdateCounts();
+            }
             break;
 
         case LVN_GETEMPTYMARKUP:
@@ -505,24 +513,28 @@ BOOL CSmartRenameUI::_OnNotify(_In_ WPARAM wParam, _In_ LPARAM lParam)
             ret = TRUE;
             break;
 
-        case LVN_ITEMCHANGED:
-            if ((m_initialized) &&
-                (pnmlv->uChanged & LVIF_STATE) &&
-                ((pnmlv->uNewState & LVIS_STATEIMAGEMASK) != (pnmlv->uOldState & LVIS_STATEIMAGEMASK)) &&
-                (pnmlv->uOldState != 0))
+        case LVN_KEYDOWN:
+            if (m_spsrm)
             {
-                if (m_spsrm)
-                {
-                    m_listview.UpdateItemCheckState(m_spsrm, pnmlv->iItem);
-                    _UpdateCounts();
-                }
+                m_listview.OnKeyDown(m_spsrm, (LV_KEYDOWN*)pnmdr);
+                _UpdateCounts();
             }
             break;
 
-        case NM_DBLCLK:
+        case LVN_GETDISPINFO:
+            if (m_spsrm)
             {
-                BOOL checked = ListView_GetCheckState(m_hwndLV, pnmlv->iItem);
-                ListView_SetCheckState(m_hwndLV, pnmlv->iItem, !checked);
+                m_listview.GetDisplayInfo(m_spsrm, (LV_DISPINFO*)pnmlv);
+            }
+            break;
+
+        case NM_CLICK:
+            {
+                if (m_spsrm)
+                {
+                    m_listview.OnClickList(m_spsrm, (NM_LISTVIEW*)pnmdr);
+                    _UpdateCounts();
+                }
                 break;
             }
         }
@@ -629,19 +641,8 @@ void CSmartRenameUI::_UpdateCounts()
     }
 }
 
-CSmartRenameListView::CSmartRenameListView()
+void CSmartRenameListView::Init(_In_ HWND hwndLV)
 {
-}
-
-CSmartRenameListView::~CSmartRenameListView()
-{
-    Clear();
-}
-
-HRESULT CSmartRenameListView::Init(_In_ HWND hwndLV)
-{
-    HRESULT hr = E_INVALIDARG;
-
     if (hwndLV)
     {
         m_hwndLV = hwndLV;
@@ -666,39 +667,77 @@ HRESULT CSmartRenameListView::Init(_In_ HWND hwndLV)
             ListView_SetImageList(m_hwndLV, himlLarge, LVSIL_NORMAL);
         }
 
-        hr = _UpdateColumns();
+        _UpdateColumns();
     }
-
-    return hr;
 }
 
-HRESULT CSmartRenameListView::ToggleAll(_In_ bool selected)
+void CSmartRenameListView::ToggleAll(_In_ ISmartRenameManager* psrm, _In_ bool selected)
 {
-    HRESULT hr = E_FAIL;
-
     if (m_hwndLV)
     {
-        int iCount = ListView_GetItemCount(m_hwndLV);
-        for (int i = 0; i < iCount; i++)
+        UINT itemCount = 0;
+        psrm->GetItemCount(&itemCount);
+        for (UINT i = 0; i < itemCount; i++)
         {
-            // Set the item check state
-            ListView_SetCheckState(m_hwndLV, i, selected);
+            CComPtr<ISmartRenameItem> spItem;
+            if (SUCCEEDED(psrm->GetItemByIndex(i, &spItem)))
+            {
+                spItem->put_selected(selected);
+            }
         }
-        hr = S_OK;
-    }
 
-    return hr;
+        RedrawItems(0, itemCount);
+    }
 }
 
-HRESULT CSmartRenameListView::UpdateItemCheckState(_In_ ISmartRenameManager* psrm, _In_ int iItem)
+void CSmartRenameListView::ToggleItem(_In_ ISmartRenameManager* psrm, _In_ int item)
 {
-    HRESULT hr = E_INVALIDARG;
+    CComPtr<ISmartRenameItem> spItem;
+    if (SUCCEEDED(psrm->GetItemByIndex(item, &spItem)))
+    {
+        bool selected = false;
+        spItem->get_selected(&selected);
+        spItem->put_selected(!selected);
 
+        RedrawItems(item, item);
+    }
+}
+
+void CSmartRenameListView::OnKeyDown(_In_ ISmartRenameManager* psrm, _In_ LV_KEYDOWN* lvKeyDown)
+{
+    if (lvKeyDown->wVKey == VK_SPACE)
+    {
+        int selectionMark = ListView_GetSelectionMark(m_hwndLV);
+        if (selectionMark != -1)
+        {
+            ToggleItem(psrm, selectionMark);
+        }
+    }
+}
+
+void CSmartRenameListView::OnClickList(_In_ ISmartRenameManager* psrm, NM_LISTVIEW* pnmListView)
+{
+    LVHITTESTINFO hitinfo;
+    //Copy click point
+    hitinfo.pt = pnmListView->ptAction;
+
+    //Make the hit test...
+    int item = ListView_HitTest(m_hwndLV, &hitinfo);
+    if (item != -1)
+    {
+        if ((hitinfo.flags & LVHT_ONITEM) != 0)
+        {
+            ToggleItem(psrm, item);
+        }
+    }
+}
+
+void CSmartRenameListView::UpdateItemCheckState(_In_ ISmartRenameManager* psrm, _In_ int iItem)
+{
     if (psrm && m_hwndLV && (iItem > -1))
     {
         CComPtr<ISmartRenameItem> spItem;
-        hr = GetItemByIndex(psrm, iItem, &spItem);
-        if (SUCCEEDED(hr))
+        if (SUCCEEDED(psrm->GetItemByIndex(iItem, &spItem)))
         {
             bool checked = ListView_GetCheckState(m_hwndLV, iItem);
             spItem->put_selected(checked);
@@ -707,9 +746,9 @@ HRESULT CSmartRenameListView::UpdateItemCheckState(_In_ ISmartRenameManager* psr
             ListView_SetItemState(m_hwndLV, iItem, uSelected, LVIS_SELECTED);
 
             // Update the rename column if necessary
-            DWORD flags = 0;
-            psrm->get_flags(&flags);
-            UpdateItem(spItem, flags);
+            int id = 0;
+            spItem->get_id(&id);
+            RedrawItems(id, id);
         }
 
         // Get the total number of list items and compare it to what is selected
@@ -718,221 +757,102 @@ HRESULT CSmartRenameListView::UpdateItemCheckState(_In_ ISmartRenameManager* psr
         bool checkHeader = (ListView_GetSelectedCount(m_hwndLV) == ListView_GetItemCount(m_hwndLV));
         _UpdateHeaderCheckState(checkHeader);
     }
-
-    return hr;
 }
 
-HRESULT CSmartRenameListView::GetItemByIndex(_In_ ISmartRenameManager* psrm, _In_ int nIndex, _Out_ ISmartRenameItem** ppItem)
-{
-    *ppItem = nullptr;
-    HRESULT hr = E_FAIL;
+#define COL_ORIGINAL_NAME   0
+#define COL_NEW_NAME        1
 
-    if (nIndex >= 0)
+void CSmartRenameListView::GetDisplayInfo(_In_ ISmartRenameManager* psrm, _Inout_ LV_DISPINFO* plvdi)
+{
+    UINT count = 0;
+    psrm->GetItemCount(&count);
+    if (plvdi->item.iItem < 0 || plvdi->item.iItem > static_cast<int>(count))
     {
-        LVITEM lvItem = { 0 };
-        lvItem.iItem = nIndex;
-        lvItem.mask = LVIF_PARAM;
-        if (ListView_GetItem(m_hwndLV, &lvItem))
-        {
-            hr = psrm->GetItemById(static_cast<int>(lvItem.lParam), ppItem);
-        }
+        // Invalid index
+        return;
     }
 
-    return hr;
-}
-
-HRESULT CSmartRenameListView::Clear()
-{
-    ListView_DeleteAllItems(m_hwndLV);
-
-    return S_OK;
-}
-
-HRESULT CSmartRenameListView::UpdateItems(_In_ ISmartRenameManager* psrm)
-{
-    HRESULT hr = E_INVALIDARG;
-    if ((m_hwndLV) && (psrm))
+    if ((plvdi->item.mask & LVIF_TEXT) || (plvdi->item.mask & LVIF_IMAGE))
     {
-        // Clear the contents of the list view
-        hr = Clear();
-        if (SUCCEEDED(hr))
+        CComPtr<ISmartRenameItem> renameItem;
+        if (SUCCEEDED(psrm->GetItemByIndex((int)plvdi->item.iItem, &renameItem)))
         {
-            hr = _InsertItems(psrm);
-        }
-
-        _UpdateColumnSizes();
-    }
-
-    return hr;
-}
-
-// TODO: consider switching to a virtual list-view style
-HRESULT CSmartRenameListView::InsertItem(_In_ ISmartRenameItem* pItem, _In_ DWORD flags)
-{
-    HRESULT hr = E_INVALIDARG;
-    if ((m_hwndLV) && (pItem))
-    {
-        hr = E_FAIL;
-        int iCount = ListView_GetItemCount(m_hwndLV);
- 
-        LVITEM lvitemNew = { 0 };
-
-        lvitemNew.mask = LVIF_IMAGE | LVIF_PARAM | LVIF_INDENT;
-        int id = -1;
-        pItem->get_id(&id);
-        lvitemNew.lParam = (LPARAM)id;
-        lvitemNew.iItem = iCount + 1;
-        pItem->get_iconIndex(&lvitemNew.iImage);
-        UINT depth = 0;
-        pItem->get_depth(&depth);
-        lvitemNew.iIndent = static_cast<int>(depth);
-
-        int iNum = ListView_InsertItem(m_hwndLV, &lvitemNew);
-        if (iNum != -1)
-        {
-            // Update the sub items of the list item
-            hr = _UpdateSubItems(pItem, flags, iNum);
-
-            // Set the check state
-            bool selected = false;
-            pItem->get_selected(&selected);
-            ListView_SetCheckState(m_hwndLV, iNum, selected);
-        }
-    }
-
-    return hr;
-}
-
-HRESULT CSmartRenameListView::UpdateItem(_In_ ISmartRenameItem* pItem, _In_ DWORD flags)
-{
-    HRESULT hr = E_INVALIDARG;
-
-    if ((m_hwndLV) && (pItem))
-    {
-        // Find the item in the list view
-        int iIndex = -1;
-        int id = -1;
-        pItem->get_id(&id);
-        hr = _FindItemByParam((LPARAM)id, &iIndex);
-        if ((SUCCEEDED(hr)) && (iIndex != -1))
-        {
-            // Insert the client settings in the correct columns (if the column is visible)
-            hr = _UpdateSubItems(pItem, flags, iIndex);
-        }
-    }
-
-    return hr;
-}
-
-HRESULT CSmartRenameListView::RemoveItem(_In_ ISmartRenameItem* pItem)
-{
-    HRESULT hr = E_INVALIDARG;
-
-    if ((m_hwndLV) && (pItem))
-    {
-        // Find the item in the list view
-        int iIndex = -1;
-        int id = -1;
-        pItem->get_id(&id);
-        hr = _FindItemByParam((LPARAM)id, &iIndex);
-        if ((SUCCEEDED(hr)) && (iIndex != -1))
-        {
-            // Remove the item
-            ListView_DeleteItem(m_hwndLV, iIndex);
-        }
-    }
-
-    return hr;
-}
-
-HRESULT CSmartRenameListView::_InsertItems(_In_ ISmartRenameManager* psrm)
-{
-    HRESULT hr = E_INVALIDARG;
-
-    if (m_hwndLV)
-    {
-        DWORD flags = 0;
-        psrm->get_flags(&flags);
-
-        SetRedraw(FALSE);
-
-        // Loop through our list of items to rename
-        UINT itemCount = 0;
-        hr = psrm->GetItemCount(&itemCount);
-        for (UINT i = 0; ((i < itemCount) && (SUCCEEDED(hr))); itemCount++)
-        {
-            CComPtr<ISmartRenameItem> spItem;
-            hr = psrm->GetItemByIndex(i, &spItem);
-            if (SUCCEEDED(hr))
+            if (plvdi->item.mask & LVIF_IMAGE)
             {
-                // Are we including this type of item?
-                hr = InsertItem(spItem, flags);
+                renameItem->get_iconIndex(&plvdi->item.iImage);
             }
-        }
 
-        SetRedraw(TRUE);
-    }
-
-    return hr;
-}
-
-HRESULT CSmartRenameListView::_UpdateSubItems(_In_ ISmartRenameItem* pItem, _In_ DWORD flags, _In_ int iItem)
-{
-    HRESULT hr = E_INVALIDARG;
-
-    if ((m_hwndLV) && (pItem))
-    {
-        LVITEM lvitemCurr = { 0 };
-
-        int iInsertIndex = 0;
-
-        lvitemCurr.iItem = iItem;
-        lvitemCurr.mask = LVIF_TEXT;
-
-        PWSTR originalName = nullptr;
-        hr = pItem->get_originalName(&originalName);
-        if (SUCCEEDED(hr))
-        {
-            // Add the original name
-            lvitemCurr.iSubItem = iInsertIndex;
-            lvitemCurr.pszText = originalName;
-
-            ListView_SetItem(m_hwndLV, &lvitemCurr);
-
-            iInsertIndex++;
-
-            // Get the new name if we have one
-            lvitemCurr.pszText = L"";
-            PWSTR newName = nullptr;
-            
-            bool shouldRename = false;
-            if (SUCCEEDED(pItem->ShouldRenameItem(flags, &shouldRename)) && shouldRename)
+            if (plvdi->item.mask & LVIF_STATE)
             {
-                if (SUCCEEDED(pItem->get_newName(&newName)))
+                plvdi->item.stateMask = LVIS_STATEIMAGEMASK;
+
+                bool isSelected = false;
+                renameItem->get_selected(&isSelected);
+                if (isSelected)
                 {
-                    // We have a new name
-                    lvitemCurr.pszText = newName;
+                    // Turn check box on
+                    plvdi->item.state = INDEXTOSTATEIMAGEMASK(2);
+                }
+                else
+                {
+                    // Turn check box off
+                    plvdi->item.state = INDEXTOSTATEIMAGEMASK(1);
                 }
             }
 
-            // Add the new name - if any
-            lvitemCurr.iSubItem = iInsertIndex;
-            ListView_SetItem(m_hwndLV, &lvitemCurr);
+            if (plvdi->item.mask & LVIF_PARAM)
+            {
+                int id = 0;
+                renameItem->get_id(&id);
+                plvdi->item.lParam = static_cast<LPARAM>(id);
+            }
 
-            CoTaskMemFree(originalName);
-            CoTaskMemFree(newName);
+            if (plvdi->item.mask & LVIF_INDENT)
+            {
+                UINT depth = 0;
+                renameItem->get_depth(&depth);
+                plvdi->item.iIndent = static_cast<int>(depth);
+            }
+
+            if (plvdi->item.mask & LVIF_TEXT)
+            {
+                PWSTR subItemText = nullptr;
+                if (plvdi->item.iSubItem == COL_ORIGINAL_NAME)
+                {
+                    renameItem->get_originalName(&subItemText);
+                }
+                else if (plvdi->item.iSubItem == COL_NEW_NAME)
+                {
+                    DWORD flags = 0;
+                    psrm->get_flags(&flags);
+                    bool shouldRename = false;
+                    if (SUCCEEDED(renameItem->ShouldRenameItem(flags, &shouldRename)) && shouldRename)
+                    {
+                        renameItem->get_newName(&subItemText);
+                    }
+                }
+
+                StringCchCopy(plvdi->item.pszText, plvdi->item.cchTextMax, subItemText ? subItemText : L"");
+                CoTaskMemFree(subItemText);
+                subItemText = nullptr;
+            }
         }
-
-        hr = S_OK;
     }
-
-    return hr;
 }
 
-HRESULT CSmartRenameListView::_UpdateColumns()
+void CSmartRenameListView::RedrawItems(_In_ int first, _In_ int last)
 {
-    HRESULT hr = E_INVALIDARG;
+    ListView_RedrawItems(m_hwndLV, first, last);
+}
 
+
+void CSmartRenameListView::SetItemCount(_In_ UINT itemCount)
+{
+    ListView_SetItemCount(m_hwndLV, itemCount);
+}
+
+void CSmartRenameListView::_UpdateColumns()
+{
     if (m_hwndLV)
     {
         // And the list view columns
@@ -971,14 +891,10 @@ HRESULT CSmartRenameListView::_UpdateColumns()
         }
 
         _UpdateColumnSizes();
-
-        hr = S_OK;
     }
-
-    return hr;
 }
 
-HRESULT CSmartRenameListView::_UpdateColumnSizes()
+void CSmartRenameListView::_UpdateColumnSizes()
 {
     if (m_hwndLV)
     {
@@ -988,11 +904,9 @@ HRESULT CSmartRenameListView::_UpdateColumnSizes()
         ListView_SetColumnWidth(m_hwndLV, 0, (rc.right - rc.left) / 2);
         ListView_SetColumnWidth(m_hwndLV, 1, (rc.right - rc.left) / 2);
     }
-
-    return S_OK;
 }
 
-HRESULT CSmartRenameListView::_UpdateHeaderCheckState(_In_ bool check)
+void CSmartRenameListView::_UpdateHeaderCheckState(_In_ bool check)
 {
     // Get a handle to the header of the columns
     HWND hwndHeader = ListView_GetHeader(m_hwndLV);
@@ -1015,30 +929,6 @@ HRESULT CSmartRenameListView::_UpdateHeaderCheckState(_In_ bool check)
 
         Header_SetItem(hwndHeader, 0, &hdi);
     }
-
-    return S_OK;
-}
-
-HRESULT CSmartRenameListView::_FindItemByParam(__in LPARAM lParam, __out int* piIndex)
-{
-    HRESULT hr = E_FAIL;
-    *piIndex = -1;
-    if ((m_hwndLV) && (lParam))
-    {
-        LVFINDINFO lvfi = { 0 };
-        lvfi.flags = LVFI_PARAM;
-        lvfi.lParam = lParam;
-        *piIndex = ListView_FindItem(m_hwndLV, -1, &lvfi);
-        hr = S_OK;
-    }
-
-    return hr;
-}
-
-HRESULT CSmartRenameListView::SetRedraw(_In_ BOOL redraw)
-{
-    SendMessage(m_hwndLV, WM_SETREDRAW, static_cast<WPARAM>(redraw), 0);
-    return S_OK;
 }
 
 

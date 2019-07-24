@@ -5,28 +5,24 @@ class CSmartRenameListView
 {
 
 public:
-    CSmartRenameListView();
-    ~CSmartRenameListView();
+    CSmartRenameListView() = default;
+    ~CSmartRenameListView() = default;
 
-    HRESULT Init(_In_ HWND hwndLV);
-    HRESULT Clear();
-    HRESULT UpdateItems(_In_ ISmartRenameManager* psrm);
-    HRESULT InsertItem(_In_ ISmartRenameItem* pItem, _In_ DWORD flags);
-    HRESULT UpdateItem(_In_ ISmartRenameItem* pItem, _In_ DWORD flags);
-    HRESULT RemoveItem(_In_ ISmartRenameItem* pItem);
-    HRESULT ToggleAll(_In_ bool selected);
-    HRESULT UpdateItemCheckState(_In_ ISmartRenameManager* psrm, _In_ int iItem);
-    HRESULT GetItemByIndex(_In_ ISmartRenameManager* psrm, _In_ int nIndex, _Out_ ISmartRenameItem** ppItem);
-    HRESULT SetRedraw(_In_ BOOL redraw);
+    void Init(_In_ HWND hwndLV);
+    void ToggleAll(_In_ ISmartRenameManager* psrm, _In_ bool selected);
+    void ToggleItem(_In_ ISmartRenameManager* psrm, _In_ int item);
+    void UpdateItemCheckState(_In_ ISmartRenameManager* psrm, _In_ int iItem);
+    void RedrawItems(_In_ int first, _In_ int last);
+    void SetItemCount(_In_ UINT itemCount);
+    void OnKeyDown(_In_ ISmartRenameManager* psrm, _In_ LV_KEYDOWN* lvKeyDown);
+    void OnClickList(_In_ ISmartRenameManager* psrm, NM_LISTVIEW* pnmListView);
+    void GetDisplayInfo(_In_ ISmartRenameManager* psrm, _Inout_ LV_DISPINFO* plvdi);
     HWND GetHWND() { return m_hwndLV; }
 
 private:
-    HRESULT _InsertItems(_In_ ISmartRenameManager* psrm);
-    HRESULT _UpdateSubItems(_In_ ISmartRenameItem* pItem, _In_ DWORD flags, _In_ int iItem);
-    HRESULT _UpdateColumns();
-    HRESULT _UpdateColumnSizes();
-    HRESULT _UpdateHeaderCheckState(_In_ bool check);
-    HRESULT _FindItemByParam(_In_ LPARAM lParam, _Out_ int* piIndex);
+    void _UpdateColumns();
+    void _UpdateColumnSizes();
+    void _UpdateHeaderCheckState(_In_ bool check);
 
     HWND m_hwndLV = nullptr;
 };
@@ -116,6 +112,7 @@ private:
     void _SetCheckboxesFromFlags(_In_ DWORD flags);
     void _ValidateFlagCheckbox(_In_ DWORD checkBoxId);
 
+    void _EnumerateItems(_In_ IDataObject* pdtobj);
     void _UpdateCounts();
 
     long m_refCount = 0;

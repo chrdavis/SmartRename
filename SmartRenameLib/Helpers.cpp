@@ -4,6 +4,8 @@
 
 HRESULT GetIconIndexFromPath(_In_ PCWSTR path, _Out_ int* index)
 {
+    *index = 0;
+
     HRESULT hr = E_FAIL;
 
     SHFILEINFO shFileInfo = { 0 };
@@ -12,7 +14,7 @@ HRESULT GetIconIndexFromPath(_In_ PCWSTR path, _Out_ int* index)
     {
         DWORD attrib = GetFileAttributes(path);
         HIMAGELIST himl = (HIMAGELIST)SHGetFileInfo(path, attrib, &shFileInfo, sizeof(shFileInfo), (SHGFI_SYSICONINDEX | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBUTES));
-        if (himl && shFileInfo.iIcon)
+        if (himl)
         {
             *index = shFileInfo.iIcon;
             // We shouldn't free the HIMAGELIST.
