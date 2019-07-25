@@ -131,6 +131,10 @@ IFACEMETHODIMP CSmartRenameItem::get_id(_Out_ int* id)
 
 IFACEMETHODIMP CSmartRenameItem::get_iconIndex(_Out_ int* iconIndex)
 {
+    if (m_iconIndex == -1)
+    {
+        GetIconIndexFromPath((PCWSTR)m_path, &m_iconIndex);
+    }
     *iconIndex = m_iconIndex;
     return S_OK;
 }
@@ -215,9 +219,6 @@ HRESULT CSmartRenameItem::_Init(_In_ IShellItem* psi)
         hr = psi->GetDisplayName(SIGDN_NORMALDISPLAY, &m_originalName);
         if (SUCCEEDED(hr))
         {
-            // Init icon index
-            GetIconIndexFromPath((PCWSTR)m_path, &m_iconIndex);
-
             // Check if we are a folder now so we can check this attribute quickly later
             SFGAOF att = 0;
             hr = psi->GetAttributes(SFGAO_STREAM | SFGAO_FOLDER, &att);

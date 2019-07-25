@@ -772,70 +772,67 @@ void CSmartRenameListView::GetDisplayInfo(_In_ ISmartRenameManager* psrm, _Inout
         return;
     }
 
-    if ((plvdi->item.mask & LVIF_TEXT) || (plvdi->item.mask & LVIF_IMAGE))
+    CComPtr<ISmartRenameItem> renameItem;
+    if (SUCCEEDED(psrm->GetItemByIndex((int)plvdi->item.iItem, &renameItem)))
     {
-        CComPtr<ISmartRenameItem> renameItem;
-        if (SUCCEEDED(psrm->GetItemByIndex((int)plvdi->item.iItem, &renameItem)))
+        if (plvdi->item.mask & LVIF_IMAGE)
         {
-            if (plvdi->item.mask & LVIF_IMAGE)
+            renameItem->get_iconIndex(&plvdi->item.iImage);
+        }
+
+        if (plvdi->item.mask & LVIF_STATE)
+        {
+            plvdi->item.stateMask = LVIS_STATEIMAGEMASK;
+
+            bool isSelected = false;
+            renameItem->get_selected(&isSelected);
+            if (isSelected)
             {
-                renameItem->get_iconIndex(&plvdi->item.iImage);
+                // Turn check box on
+                plvdi->item.state = INDEXTOSTATEIMAGEMASK(2);
             }
-
-            if (plvdi->item.mask & LVIF_STATE)
+            else
             {
-                plvdi->item.stateMask = LVIS_STATEIMAGEMASK;
+                // Turn check box off
+                plvdi->item.state = INDEXTOSTATEIMAGEMASK(1);
+            }
+        }
 
-                bool isSelected = false;
-                renameItem->get_selected(&isSelected);
-                if (isSelected)
+        if (plvdi->item.mask & LVIF_PARAM)
+        {
+            int id = 0;
+            renameItem->get_id(&id);
+            plvdi->item.lParam = static_cast<LPARAM>(id);
+        }
+
+        if (plvdi->item.mask & LVIF_INDENT)
+        {
+            UINT depth = 0;
+            renameItem->get_depth(&depth);
+            plvdi->item.iIndent = static_cast<int>(depth);
+        }
+
+        if (plvdi->item.mask & LVIF_TEXT)
+        {
+            PWSTR subItemText = nullptr;
+            if (plvdi->item.iSubItem == COL_ORIGINAL_NAME)
+            {
+                renameItem->get_originalName(&subItemText);
+            }
+            else if (plvdi->item.iSubItem == COL_NEW_NAME)
+            {
+                DWORD flags = 0;
+                psrm->get_flags(&flags);
+                bool shouldRename = false;
+                if (SUCCEEDED(renameItem->ShouldRenameItem(flags, &shouldRename)) && shouldRename)
                 {
-                    // Turn check box on
-                    plvdi->item.state = INDEXTOSTATEIMAGEMASK(2);
-                }
-                else
-                {
-                    // Turn check box off
-                    plvdi->item.state = INDEXTOSTATEIMAGEMASK(1);
+                    renameItem->get_newName(&subItemText);
                 }
             }
 
-            if (plvdi->item.mask & LVIF_PARAM)
-            {
-                int id = 0;
-                renameItem->get_id(&id);
-                plvdi->item.lParam = static_cast<LPARAM>(id);
-            }
-
-            if (plvdi->item.mask & LVIF_INDENT)
-            {
-                UINT depth = 0;
-                renameItem->get_depth(&depth);
-                plvdi->item.iIndent = static_cast<int>(depth);
-            }
-
-            if (plvdi->item.mask & LVIF_TEXT)
-            {
-                PWSTR subItemText = nullptr;
-                if (plvdi->item.iSubItem == COL_ORIGINAL_NAME)
-                {
-                    renameItem->get_originalName(&subItemText);
-                }
-                else if (plvdi->item.iSubItem == COL_NEW_NAME)
-                {
-                    DWORD flags = 0;
-                    psrm->get_flags(&flags);
-                    bool shouldRename = false;
-                    if (SUCCEEDED(renameItem->ShouldRenameItem(flags, &shouldRename)) && shouldRename)
-                    {
-                        renameItem->get_newName(&subItemText);
-                    }
-                }
-
-                StringCchCopy(plvdi->item.pszText, plvdi->item.cchTextMax, subItemText ? subItemText : L"");
-                CoTaskMemFree(subItemText);
-                subItemText = nullptr;
-            }
+            StringCchCopy(plvdi->item.pszText, plvdi->item.cchTextMax, subItemText ? subItemText : L"");
+            CoTaskMemFree(subItemText);
+            subItemText = nullptr;
         }
     }
 }
@@ -844,7 +841,6 @@ void CSmartRenameListView::RedrawItems(_In_ int first, _In_ int last)
 {
     ListView_RedrawItems(m_hwndLV, first, last);
 }
-
 
 void CSmartRenameListView::SetItemCount(_In_ UINT itemCount)
 {
