@@ -625,6 +625,7 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
                     spRenameRegEx->get_flags(&flags);
 
                     UINT itemCount = 0;
+                    unsigned long itemEnumIndex = 1;
                     pwtd->spsrm->GetItemCount(&itemCount);
                     for (UINT u = 0; u <= itemCount; u++)
                     {
@@ -732,22 +733,12 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
                                 wchar_t uniqueName[MAX_PATH] = { 0 };
                                 if (newNameToUse != nullptr && (flags & EnumerateItems))
                                 {
-                                    PWSTR parentPath = nullptr;
-                                    spItem->get_parentPath(&parentPath);
-
-                                    // Make a unique name with a counter
-                                    if (PathMakeUniqueName(uniqueName, ARRAYSIZE(uniqueName), newNameToUse, newNameToUse, parentPath))
+                                    unsigned long countUsed = 0;
+                                    if (GetEnumeratedFileName(uniqueName, ARRAYSIZE(uniqueName), newNameToUse, nullptr, itemEnumIndex, &countUsed))
                                     {
-                                        // Trim to the last element in the path
-                                        newNameToUse = PathFindFileNameW(uniqueName);
-                                        if (newNameToUse == nullptr)
-                                        {
-                                            uniqueName[0] = L'\0';
-                                            newNameToUse = uniqueName;
-                                        }
+                                        newNameToUse = uniqueName;
                                     }
-
-                                    CoTaskMemFree(parentPath);
+                                    itemEnumIndex++;
                                 }
 
                                 spItem->put_newName(newNameToUse);
