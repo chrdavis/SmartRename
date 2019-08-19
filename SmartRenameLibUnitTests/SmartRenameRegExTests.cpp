@@ -262,6 +262,52 @@ namespace SmartRenameRegExTests
             }
         }
 
+        TEST_METHOD(VerifyMatchAllWildcardUseRegEx)
+        {
+            CComPtr<ISmartRenameRegEx> renameRegEx;
+            Assert::IsTrue(CSmartRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+            DWORD flags = MatchAllOccurences | UseRegularExpressions;
+            Assert::IsTrue(renameRegEx->put_flags(flags) == S_OK);
+
+            SearchReplaceExpected sreTable[] =
+            {
+                { L".*", L"Foo", L"AAAAAA", L"Foo" },
+            };
+
+            for (int i = 0; i < ARRAYSIZE(sreTable); i++)
+            {
+                PWSTR result = nullptr;
+                Assert::IsTrue(renameRegEx->put_searchTerm(sreTable[i].search) == S_OK);
+                Assert::IsTrue(renameRegEx->put_replaceTerm(sreTable[i].replace) == S_OK);
+                Assert::IsTrue(renameRegEx->Replace(sreTable[i].test, &result) == S_OK);
+                Assert::IsTrue(wcscmp(result, sreTable[i].expected) == 0);
+                CoTaskMemFree(result);
+            }
+        }
+
+        TEST_METHOD(VerifyReplaceFirstWildcardUseRegEx)
+        {
+            CComPtr<ISmartRenameRegEx> renameRegEx;
+            Assert::IsTrue(CSmartRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+            DWORD flags = UseRegularExpressions;
+            Assert::IsTrue(renameRegEx->put_flags(flags) == S_OK);
+
+            SearchReplaceExpected sreTable[] =
+            {
+                { L".*", L"Foo", L"AAAAAA", L"FooAAAA" },
+            };
+
+            for (int i = 0; i < ARRAYSIZE(sreTable); i++)
+            {
+                PWSTR result = nullptr;
+                Assert::IsTrue(renameRegEx->put_searchTerm(sreTable[i].search) == S_OK);
+                Assert::IsTrue(renameRegEx->put_replaceTerm(sreTable[i].replace) == S_OK);
+                Assert::IsTrue(renameRegEx->Replace(sreTable[i].test, &result) == S_OK);
+                Assert::IsTrue(wcscmp(result, sreTable[i].expected) == 0);
+                CoTaskMemFree(result);
+            }
+        }
+
         TEST_METHOD(VerifyEventsFire)
         {
             CComPtr<ISmartRenameRegEx> renameRegEx;

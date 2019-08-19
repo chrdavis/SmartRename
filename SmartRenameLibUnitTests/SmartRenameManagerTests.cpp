@@ -67,5 +67,41 @@ namespace SmartRenameManagerTests
             mockMgrEvents->Release();
         }
 
+        TEST_METHOD(VerifySingleRename)
+        {
+            // TODO: Create a single item (in a temp directory) and verify rename works as expected
+            // TODO: Also verify events
+        }
+
+        TEST_METHOD(VerifyMultiRename)
+        {
+
+        }
+
+        TEST_METHOD(VerifyFilesOnlyRename)
+        {
+
+        }
+
+        TEST_METHOD(VerifyFoldersOnlyRename)
+        {
+
+        }
+
+        TEST_METHOD(VerifyFileNameOnlyRename)
+        {
+
+        }
+
+        TEST_METHOD(VerifyFileExtensionOnlyRename)
+        {
+
+        }
+
+        TEST_METHOD(VerifySubFoldersRename)
+        {
+
+        }
+
     };
 }
