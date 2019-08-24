@@ -859,7 +859,7 @@ void CSmartRenameListView::_UpdateColumns()
         lvc.fmt = LVCFMT_LEFT;
         lvc.iOrder = iInsertPoint;
 
-        WCHAR buffer[64] = { 0 };
+        wchar_t buffer[64] = { 0 };
         LoadString(g_hInst, IDS_ORIGINAL, buffer, ARRAYSIZE(buffer));
         lvc.pszText = buffer;
 
@@ -908,7 +908,7 @@ void CSmartRenameListView::_UpdateHeaderCheckState(_In_ bool check)
     HWND hwndHeader = ListView_GetHeader(m_hwndLV);
     if (hwndHeader)
     {
-        WCHAR szBuff[MAX_PATH] = { 0 };
+        wchar_t szBuff[MAX_PATH] = { 0 };
 
         // Retrieve the existing header first so we
         // don't trash the text already there

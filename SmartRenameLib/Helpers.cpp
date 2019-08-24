@@ -62,7 +62,7 @@ HRESULT _ParseEnumItems(_In_ IEnumShellItems* pesi, _In_ ISmartRenameManager* ps
                         if (SUCCEEDED(hr))
                         {
                             // Parse the folder contents recursively
-                            hr = _ParseEnumItems(spesiNext, psrm, ++depth);
+                            hr = _ParseEnumItems(spesiNext, psrm, depth + 1);
                         }
                     }
                 }
@@ -123,7 +123,7 @@ HWND CreateMsgWindow(_In_ HINSTANCE hInst, _In_ WNDPROC pfnWndProc, _In_ void* p
 }
 
 BOOL GetEnumeratedFileName(__out_ecount(cchMax) PWSTR pszUniqueName, UINT cchMax,
-    __in PCWSTR pszTemplate, __in PCWSTR pszDir, unsigned long ulMinLong,
+    __in PCWSTR pszTemplate, __in_opt PCWSTR pszDir, unsigned long ulMinLong,
     __inout unsigned long* pulNumUsed)
 {
     PWSTR pszName = nullptr;
@@ -161,7 +161,7 @@ BOOL GetEnumeratedFileName(__out_ecount(cchMax) PWSTR pszUniqueName, UINT cchMax
     int cchStem = 0;
     PCWSTR pszStem = nullptr;
     PCWSTR pszRest = nullptr;
-    WCHAR szFormat[MAX_PATH] = { 0 };
+    wchar_t szFormat[MAX_PATH] = { 0 };
 
     if (SUCCEEDED(hr))
     {
@@ -257,7 +257,7 @@ BOOL GetEnumeratedFileName(__out_ecount(cchMax) PWSTR pszUniqueName, UINT cchMax
 
             for (unsigned long ul = ulMin; ((ul < ulMax) && (!fRet)); ul++)
             {
-                WCHAR szTemp[MAX_PATH] = { 0 };
+                wchar_t szTemp[MAX_PATH] = { 0 };
                 hr = StringCchPrintf(szTemp, ARRAYSIZE(szTemp), szFormat, ul);
                 if (SUCCEEDED(hr))
                 {
