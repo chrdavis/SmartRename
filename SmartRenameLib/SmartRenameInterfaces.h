@@ -40,7 +40,6 @@ interface __declspec(uuid("C7F59201-4DE1-4855-A3A2-26FC3279C8A5")) ISmartRenameI
 {
 public:
     IFACEMETHOD(get_path)(_Outptr_ PWSTR* path) = 0;
-    IFACEMETHOD(get_parentPath)(_Outptr_ PWSTR* parentPath) = 0;
     IFACEMETHOD(get_shellItem)(_Outptr_ IShellItem** ppsi) = 0;
     IFACEMETHOD(get_originalName)(_Outptr_ PWSTR* originalName) = 0;
     IFACEMETHOD(get_newName)(_Outptr_ PWSTR* newName) = 0;

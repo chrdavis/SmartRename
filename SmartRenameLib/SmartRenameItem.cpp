@@ -42,18 +42,6 @@ IFACEMETHODIMP CSmartRenameItem::get_path(_Outptr_ PWSTR* path)
     return hr;
 }
 
-IFACEMETHODIMP CSmartRenameItem::get_parentPath(_Outptr_ PWSTR* parentPath)
-{
-    *parentPath = nullptr;
-    CSRWSharedAutoLock lock(&m_lock);
-    HRESULT hr = m_parentPath ? S_OK : E_FAIL;
-    if (SUCCEEDED(hr))
-    {
-        hr = SHStrDup(m_parentPath, parentPath);
-    }
-    return hr;
-}
-
 IFACEMETHODIMP CSmartRenameItem::get_shellItem(_Outptr_ IShellItem** ppsi)
 {
     return SHCreateItemFromParsingName(m_path, nullptr, IID_PPV_ARGS(ppsi));
@@ -207,7 +195,6 @@ CSmartRenameItem::~CSmartRenameItem()
     CoTaskMemFree(m_path);
     CoTaskMemFree(m_newName);
     CoTaskMemFree(m_originalName);
-    CoTaskMemFree(m_parentPath);
 }
 
 HRESULT CSmartRenameItem::_Init(_In_ IShellItem* psi)
@@ -226,17 +213,6 @@ HRESULT CSmartRenameItem::_Init(_In_ IShellItem* psi)
             {
                 // Some items can be both folders and streams (ex: zip folders).
                 m_isFolder = (att & SFGAO_FOLDER) && !(att & SFGAO_STREAM);
-            }
-        }
-
-        if (SUCCEEDED(hr))
-        {
-            // Get the parent path
-            CComPtr<IShellItem> spParent;
-            hr = psi->GetParent(&spParent);
-            if (SUCCEEDED(hr))
-            {
-                hr = spParent->GetDisplayName(SIGDN_FILESYSPATH, &m_parentPath);
             }
         }
     }

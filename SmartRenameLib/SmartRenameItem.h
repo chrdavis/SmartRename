@@ -15,7 +15,6 @@ public:
 
     // ISmartRenameItem
     IFACEMETHODIMP get_path(_Outptr_ PWSTR* path);
-    IFACEMETHODIMP get_parentPath(_Outptr_ PWSTR* parentPath);
     IFACEMETHODIMP get_shellItem(_Outptr_ IShellItem** ppsi);
     IFACEMETHODIMP get_originalName(_Outptr_ PWSTR* originalName);
     IFACEMETHODIMP put_newName(_In_opt_ PCWSTR newName);
@@ -54,7 +53,6 @@ protected:
     UINT     m_depth = 0;
     HRESULT  m_error = S_OK;
     PWSTR    m_path = nullptr;
-    PWSTR    m_parentPath = nullptr;
     PWSTR    m_originalName = nullptr;
     PWSTR    m_newName = nullptr;
     CSRWLock m_lock;
