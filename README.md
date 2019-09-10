@@ -1,5 +1,8 @@
 # SmartRename
-SmartRename is a Windows Shell Extension for more advanced renaming using search and replace or regular expressions.  Every once in a while I need more control when bulk renaming files and folders.  SmartRename allows simple search and replace or more advanced regular expression matching.  While you type in the search and replace input fields, the preview area will show what the items will be renamed to.  SmartRename then calls into the Windows Explorer file operations engine to perform the rename.  This has the benefit of allowing the rename operation to be undone after SmartRename exits.
+
+Have you ever needed to modify the file names of a large number of files but didn't want to rename all of the files the same name? Wanted to do a simple search/replace on a sub-string of various file names? Wanted to perform a regular expression rename on multiple items?  
+
+SmartRename is a Windows Shell Extension for advanced bulk renaming using search and replace or regular expressions.  SmartRename allows simple search and replace or more advanced regular expression matching.  While you type in the search and replace input fields, the preview area will show what the items will be renamed to.  SmartRename then calls into the Windows Explorer file operations engine to perform the rename.  This has the benefit of allowing the rename operation to be undone after SmartRename exits.
 
 ### Demo
 
