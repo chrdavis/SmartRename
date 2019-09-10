@@ -6,6 +6,8 @@ SmartRename is a Windows Shell Extension for advanced bulk renaming using search
 
 ### Demo
 
+In the below example, I am replacing all of the instances of "Pampalona" with "Pamplona" from all the images in the folder.  Since all the files are uniquely named, this would have taken a long time to complete manually.  With SmartRename this tasks seconds.
+
 ![Image description](/Images/SmartRenameDemo.gif)
 
 If you find this useful, feel free to buy me a coffee!
