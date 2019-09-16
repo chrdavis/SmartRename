@@ -11,11 +11,11 @@ public:
     CTestFileHelper();
     ~CTestFileHelper();
 
-    bool AddFile(_In_ PCWSTR path);
-    bool AddFolder(_In_ PCWSTR path);
+    bool AddFile(_In_ const std::wstring path);
+    bool AddFolder(_In_ const std::wstring path);
     const std::filesystem::path GetTempDirectory() { return _tempDirectory; }
-    bool PathExists(_In_ PCWSTR path);
-    std::filesystem::path GetFullPath(_In_ PCWSTR path);
+    bool PathExists(_In_ const std::wstring path);
+    std::filesystem::path GetFullPath(_In_ const std::wstring path);
 
 private:
     bool _CreateTempDirectory();

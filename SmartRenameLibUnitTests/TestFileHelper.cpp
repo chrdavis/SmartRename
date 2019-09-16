@@ -18,7 +18,7 @@ CTestFileHelper::~CTestFileHelper()
 }
 
 // Pass a relative path which will be appended to the temp directory path
-bool CTestFileHelper::AddFile(_In_ PCWSTR path)
+bool CTestFileHelper::AddFile(_In_ const std::wstring path)
 {
     fs::path newFilePath = _tempDirectory;
     newFilePath.append(path);
@@ -28,21 +28,21 @@ bool CTestFileHelper::AddFile(_In_ PCWSTR path)
 }
 
 // Pass a relative path which will be appended to the temp directory path
-bool CTestFileHelper::AddFolder(_In_ PCWSTR path)
+bool CTestFileHelper::AddFolder(_In_ const std::wstring path)
 {
     fs::path newFolderPath = _tempDirectory;
     newFolderPath.append(path);
     return fs::create_directory(fs::path(newFolderPath));
 }
 
-fs::path CTestFileHelper::GetFullPath(_In_ PCWSTR path)
+fs::path CTestFileHelper::GetFullPath(_In_ const std::wstring path)
 {
     fs::path fullPath = _tempDirectory;
     fullPath.append(path);
     return fullPath;
 }
 
-bool CTestFileHelper::PathExists(_In_ PCWSTR path)
+bool CTestFileHelper::PathExists(_In_ const std::wstring path)
 {
     fs::path fullPath = _tempDirectory;
     fullPath.append(path);
