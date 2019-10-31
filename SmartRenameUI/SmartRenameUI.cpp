@@ -89,9 +89,9 @@ HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt
 }
 
 // ISmartRenameUI
-IFACEMETHODIMP CSmartRenameUI::Show()
+IFACEMETHODIMP CSmartRenameUI::Show(_In_opt_ HWND hwndParent)
 {
-    return _DoModal(NULL);
+    return _DoModal(hwndParent);
 }
 
 IFACEMETHODIMP CSmartRenameUI::Close()
