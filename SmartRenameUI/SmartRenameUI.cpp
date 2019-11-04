@@ -123,7 +123,7 @@ HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt
 // ISmartRenameUI
 IFACEMETHODIMP CSmartRenameUI::Show(_In_opt_ HWND hwndParent)
 {
-    return _DoModal(hwndParent);
+    return _DoModeless(hwndParent);
 }
 
 IFACEMETHODIMP CSmartRenameUI::Close()
@@ -354,12 +354,24 @@ void CSmartRenameUI::_OnCloseDlg()
 {
     // Persist the current settings
     _WriteSettings();
-    EndDialog(m_hwnd, 1);
+    if (m_modeless)
+    {
+        DestroyWindow(m_hwnd);
+    }
+    else
+    {
+        EndDialog(m_hwnd, 1);
+    }
 }
 
 void CSmartRenameUI::_OnDestroyDlg()
 {
     _Cleanup();
+
+    if (m_modeless)
+    {
+        PostQuitMessage(0);
+    }
 }
 
 void CSmartRenameUI::_OnRename()
@@ -384,9 +396,37 @@ void CSmartRenameUI::_OnAbout()
 
 HRESULT CSmartRenameUI::_DoModal(__in_opt HWND hwnd)
 {
+    m_modeless = false;
     HRESULT hr = S_OK;
     INT_PTR ret = DialogBoxParam(g_hInst, MAKEINTRESOURCE(IDD_MAIN), hwnd, s_DlgProc, (LPARAM)this);
     if (ret < 0)
+    {
+        hr = HRESULT_FROM_WIN32(GetLastError());
+    }
+    return hr;
+}
+
+HRESULT CSmartRenameUI::_DoModeless(__in_opt HWND hwnd)
+{
+    m_modeless = true;
+    HRESULT hr = S_OK;
+    if (NULL != CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_MAIN), hwnd, s_DlgProc, (LPARAM)this))
+    {
+        ShowWindow(m_hwnd, SW_SHOWNORMAL);
+        MSG msg;
+        while (GetMessage(&msg, NULL, 0, 0))
+        {
+            if (!IsDialogMessage(m_hwnd, &msg))
+            {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
+        }
+
+        DestroyWindow(m_hwnd);
+        m_hwnd = NULL;
+    }
+    else
     {
         hr = HRESULT_FROM_WIN32(GetLastError());
     }
@@ -618,6 +658,8 @@ void CSmartRenameUI::_OnSize(_In_ WPARAM wParam)
         {
             _MoveControl(g_repositionMap[u].id, g_repositionMap[u].flags, xDelta, yDelta);
         }
+
+        m_listview.OnSize();
     }
 }
 
@@ -784,7 +826,7 @@ void CSmartRenameListView::Init(_In_ HWND hwndLV)
         SetWindowLongPtr(m_hwndLV, GWL_STYLE, dwLVStyle);
 
         // Set the extended view styles
-        ListView_SetExtendedListViewStyle(m_hwndLV, LVS_EX_CHECKBOXES | LVS_EX_DOUBLEBUFFER);
+        ListView_SetExtendedListViewStyle(m_hwndLV, LVS_EX_CHECKBOXES | LVS_EX_DOUBLEBUFFER | LVS_EX_AUTOSIZECOLUMNS);
 
         // Get the system image lists.  Our list view is setup to not destroy
         // these since the image list belongs to the entire explorer process
@@ -964,6 +1006,14 @@ void CSmartRenameListView::GetDisplayInfo(_In_ ISmartRenameManager* psrm, _Inout
             subItemText = nullptr;
         }
     }
+}
+
+void CSmartRenameListView::OnSize()
+{
+    RECT rc = { 0 };
+    GetClientRect(m_hwndLV, &rc);
+    ListView_SetColumnWidth(m_hwndLV, 0, RECT_WIDTH(rc) / 2);
+    ListView_SetColumnWidth(m_hwndLV, 1, RECT_WIDTH(rc) / 2);
 }
 
 void CSmartRenameListView::RedrawItems(_In_ int first, _In_ int last)
