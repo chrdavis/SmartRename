@@ -16,5 +16,6 @@
 #include <pathcch.h>
 #include <shobjidl.h>
 #include <shellapi.h>
+#include <shlwapi.h>
 
 #include "SmartRenameInterfaces.h"

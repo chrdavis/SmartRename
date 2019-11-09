@@ -3,6 +3,8 @@
 #include <SmartRenameUI.h>
 #include <SmartRenameItem.h>
 #include <SmartRenameManager.h>
+#include <Helpers.h>
+#include <Settings.h>
 #include "resource.h"
 
 extern HINSTANCE g_hInst;
@@ -40,6 +42,10 @@ HRESULT CSmartRenameMenu::s_CreateInstance(_In_opt_ IUnknown*, _In_ REFIID riid,
 // IShellExtInit
 HRESULT CSmartRenameMenu::Initialize(_In_opt_ PCIDLIST_ABSOLUTE, _In_ IDataObject *pdtobj, HKEY)
 {
+    // Check if we have disabled ourselves
+    if (!CSettings::GetEnabled())
+        return E_FAIL;
+
     // Cache the data object to be used later
     m_spdo = pdtobj;
     return S_OK;
@@ -48,13 +54,47 @@ HRESULT CSmartRenameMenu::Initialize(_In_opt_ PCIDLIST_ABSOLUTE, _In_ IDataObjec
 // IContextMenu
 HRESULT CSmartRenameMenu::QueryContextMenu(HMENU hMenu, UINT index, UINT uIDFirst, UINT, UINT uFlags)
 {
+    // Check if we have disabled ourselves
+    if (!CSettings::GetEnabled())
+        return E_FAIL;
+
+    // Check if we should only be on the extended context menu
+    if (CSettings::GetExtendedContextMenuOnly() && (!(uFlags & CMF_EXTENDEDVERBS)))
+        return E_FAIL;
+
     HRESULT hr = E_UNEXPECTED;
     if (m_spdo && !(uFlags & (CMF_DEFAULTONLY | CMF_VERBSONLY | CMF_OPTIMIZEFORINVOKE)))
     {
         wchar_t menuName[64] = { 0 };
         LoadString(g_hInst, IDS_SMARTRENAME, menuName, ARRAYSIZE(menuName));
-        InsertMenu(hMenu, index, MF_STRING | MF_BYPOSITION, uIDFirst++, menuName);
-        hr = MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, 1);
+
+        MENUITEMINFO mii;
+        mii.cbSize = sizeof(MENUITEMINFO);
+        mii.fMask = MIIM_STRING | MIIM_FTYPE | MIIM_ID | MIIM_STATE;
+        mii.wID = uIDFirst++;
+        mii.fType = MFT_STRING;
+        mii.dwTypeData = (PWSTR)menuName;
+        mii.fState = MFS_ENABLED;
+
+        if (CSettings::GetShowIconOnMenu())
+        {
+            HICON hIcon = (HICON)LoadImage(g_hInst, MAKEINTRESOURCE(IDI_RENAME), IMAGE_ICON, 16, 16, 0);
+            if (hIcon)
+            {
+                mii.fMask |= MIIM_BITMAP;
+                mii.hbmpItem = CreateBitmapFromIcon(hIcon);
+                DestroyIcon(hIcon);
+            }
+        }
+
+        if (!InsertMenuItem(hMenu, index, TRUE, &mii))
+        {
+            hr = HRESULT_FROM_WIN32(GetLastError());
+        }
+        else
+        {
+            hr = MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, 1);
+        }
     }
 
     return hr;
@@ -64,7 +104,8 @@ HRESULT CSmartRenameMenu::InvokeCommand(_In_ LPCMINVOKECOMMANDINFO pici)
 {
     HRESULT hr = E_FAIL;
 
-    if ((IS_INTRESOURCE(pici->lpVerb)) &&
+    if (CSettings::GetEnabled() && 
+        (IS_INTRESOURCE(pici->lpVerb)) &&
         (LOWORD(pici->lpVerb) == 0))
     {
         InvokeStruct* pInvokeData = new InvokeStruct;
@@ -86,7 +127,6 @@ HRESULT CSmartRenameMenu::InvokeCommand(_In_ LPCMINVOKECOMMANDINFO pici)
             {
                 delete pInvokeData;
             }
-
         }
     }
 

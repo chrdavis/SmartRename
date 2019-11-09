@@ -3,6 +3,7 @@
 // Used by SmartRenameExt.rc
 //
 #define IDS_SMARTRENAME                 801
+#define IDI_RENAME                      132
 
 // Next default values for new objects
 // 

@@ -4,6 +4,7 @@
 #include <commctrl.h>
 #include <Shlobj.h>
 #include <helpers.h>
+#include <settings.h>
 #include <windowsx.h>
 
 extern HINSTANCE g_hInst;
@@ -216,7 +217,7 @@ IFACEMETHODIMP CSmartRenameUI::OnRenameCompleted()
     EnableWindow(m_hwnd, TRUE);
 
     // Close the window
-    _OnCloseDlg();
+    PostMessage(m_hwnd, WM_CLOSE, (WPARAM)0, (LPARAM)0);
     return S_OK;
 }
 
@@ -261,8 +262,6 @@ IFACEMETHODIMP CSmartRenameUI::Drop(_In_ IDataObject* pdtobj, DWORD, POINTL pt, 
         m_spdth->Drop(pdtobj, &ptT, *pdwEffect);
     }
 
-    _OnClear();
-
     EnableWindow(GetDlgItem(m_hwnd, ID_RENAME), TRUE);
     EnableWindow(m_hwndLV, TRUE);
 
@@ -295,6 +294,38 @@ HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDa
     if (FAILED(hr))
     {
         _Cleanup();
+    }
+
+    return hr;
+}
+
+HRESULT CSmartRenameUI::_InitAutoComplete()
+{
+    HRESULT hr = S_OK;
+    if (CSettings::GetMRUEnabled())
+    {
+        hr = CoCreateInstance(CLSID_AutoComplete, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&m_spSearchAC));
+        if (SUCCEEDED(hr))
+        {
+            hr = CRenameMRUSearch_CreateInstance(&m_spSearchACL);
+            if (SUCCEEDED(hr))
+            {
+                hr = m_spSearchAC->Init(GetDlgItem(m_hwnd, IDC_EDIT_SEARCHFOR), m_spSearchACL, nullptr, nullptr);
+            }
+        }
+
+        if (SUCCEEDED(hr))
+        {
+            hr = CoCreateInstance(CLSID_AutoComplete, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&m_spReplaceAC));
+            if (SUCCEEDED(hr))
+            {
+                hr = CRenameMRUReplace_CreateInstance(&m_spReplaceACL);
+                if (SUCCEEDED(hr))
+                {
+                    hr = m_spReplaceAC->Init(GetDlgItem(m_hwnd, IDC_EDIT_REPLACEWITH), m_spReplaceACL, nullptr, nullptr);
+                }
+            }
+        }
     }
 
     return hr;
@@ -335,25 +366,77 @@ void CSmartRenameUI::_EnumerateItems(_In_ IDataObject* pdtobj)
     }
 }
 
-// TODO: persist settings made in the UI
 HRESULT CSmartRenameUI::_ReadSettings()
 {
+    // Check if we should read flags from settings
+    // or the defaults from the manager.
+    DWORD flags = 0;
+    if (CSettings::GetPersistState())
+    {
+        flags = CSettings::GetFlags();
+        m_spsrm->put_flags(flags);
+
+        wchar_t buff[1024];
+        buff[0] = L'\0';
+        CSettings::GetSearchText(buff, ARRAYSIZE(buff));
+        SetWindowText(GetDlgItem(m_hwnd, IDC_EDIT_SEARCHFOR), buff);
+
+        buff[0] = L'\0';
+        CSettings::GetReplaceText(buff, ARRAYSIZE(buff));
+        SetWindowText(GetDlgItem(m_hwnd, IDC_EDIT_REPLACEWITH), buff);
+    }
+    else
+    {
+        m_spsrm->get_flags(&flags);
+    }
+
+    _SetCheckboxesFromFlags(flags);
+
     return S_OK;
 }
 
 HRESULT CSmartRenameUI::_WriteSettings()
 {
-    return S_OK;
-}
+    // Check if we should store our settings
+    if (CSettings::GetPersistState())
+    {
+        DWORD flags = 0;
+        m_spsrm->get_flags(&flags);
+        CSettings::SetFlags(flags);
 
-void CSmartRenameUI::_OnClear()
-{
+        wchar_t buff[1024];
+        buff[0] = L'\0';
+        GetWindowText(GetDlgItem(m_hwnd, IDC_EDIT_SEARCHFOR), buff, ARRAYSIZE(buff));
+        CSettings::SetSearchText(buff);
+
+        if (CSettings::GetMRUEnabled() && m_spSearchACL)
+        {
+            CComPtr<ISmartRenameMRU> spSearchMRU;
+            if (SUCCEEDED(m_spSearchACL->QueryInterface(IID_PPV_ARGS(&spSearchMRU))))
+            {
+                spSearchMRU->AddMRUString(buff);
+            }
+        }
+
+        buff[0] = L'\0';
+        GetWindowText(GetDlgItem(m_hwnd, IDC_EDIT_REPLACEWITH), buff, ARRAYSIZE(buff));
+        CSettings::SetReplaceText(buff);
+
+        if (CSettings::GetMRUEnabled() && m_spReplaceACL)
+        {
+            CComPtr<ISmartRenameMRU> spReplaceMRU;
+            if (SUCCEEDED(m_spReplaceACL->QueryInterface(IID_PPV_ARGS(&spReplaceMRU))))
+            {
+                spReplaceMRU->AddMRUString(buff);
+            }
+        }
+    }
+
+    return S_OK;
 }
 
 void CSmartRenameUI::_OnCloseDlg()
 {
-    // Persist the current settings
-    _WriteSettings();
     if (m_modeless)
     {
         DestroyWindow(m_hwnd);
@@ -380,6 +463,11 @@ void CSmartRenameUI::_OnRename()
     {
         m_spsrm->Rename(m_hwnd);
     }
+
+    // Persist the current settings.  We only do this when
+    // a rename is actually performed.  Not when the user
+    // closes/cancels the dialog.
+    _WriteSettings();
 }
 
 void CSmartRenameUI::_OnAbout()
@@ -485,8 +573,26 @@ void CSmartRenameUI::_OnInitDlg()
     // Initialize checkboxes from flags
     if (m_spsrm)
     {
+        // Check if we should read flags from settings
+        // or the defaults from the manager.
         DWORD flags = 0;
-        m_spsrm->get_flags(&flags);
+        if (CSettings::GetPersistState())
+        {
+            flags = CSettings::GetFlags();
+            wchar_t buff[1024];
+            buff[0] = L'\0';
+            CSettings::GetSearchText(buff, ARRAYSIZE(buff));
+            SetWindowText(GetDlgItem(m_hwnd, IDC_EDIT_SEARCHFOR), buff);
+
+            buff[0] = L'\0';
+            CSettings::GetReplaceText(buff, ARRAYSIZE(buff));
+            SetWindowText(GetDlgItem(m_hwnd, IDC_EDIT_REPLACEWITH), buff);
+        }
+        else
+        {
+            m_spsrm->get_flags(&flags);
+        }
+
         _SetCheckboxesFromFlags(flags);
     }
 
@@ -515,6 +621,8 @@ void CSmartRenameUI::_OnInitDlg()
     m_initialHeight = RECT_HEIGHT(rc);
     m_lastWidth = m_initialWidth;
     m_lastHeight = m_initialHeight;
+
+    _InitAutoComplete();
 
     // Disable rename button by default.  It will be enabled in _UpdateCounts if
     // there are tiems to be renamed

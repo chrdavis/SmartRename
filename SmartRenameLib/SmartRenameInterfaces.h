@@ -107,3 +107,9 @@ public:
     IFACEMETHOD(Update)() = 0;
 };
 
+interface __declspec(uuid("04AAFABE-B76E-4E13-993A-B5941F52B139")) ISmartRenameMRU : public IUnknown
+{
+public:
+    IFACEMETHOD(AddMRUString)(_In_ PCWSTR entry) = 0;
+};
+
