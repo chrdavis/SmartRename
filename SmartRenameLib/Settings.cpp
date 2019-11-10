@@ -342,7 +342,8 @@ IFACEMETHODIMP CRenameMRU::Reset()
 IFACEMETHODIMP CRenameMRU::Next(__in ULONG celt, __out_ecount_part(celt, *pceltFetched) LPOLESTR* rgelt, __out_opt ULONG* pceltFetched)
 {
     HRESULT hr = S_OK;
-    WCHAR mruEntry[MAX_ENTRY_STRING] = { 0 };
+    WCHAR mruEntry[MAX_ENTRY_STRING];
+    mruEntry[0] = L'\0';
 
     if (pceltFetched)
     {
@@ -360,12 +361,7 @@ IFACEMETHODIMP CRenameMRU::Next(__in ULONG celt, __out_ecount_part(celt, *pceltF
     }
 
     hr = S_FALSE;
-    if (m_mruIndex < m_mruSize && _EnumMRUList(m_mruIndex++, (void*)mruEntry, ARRAYSIZE(mruEntry)) > 0)
-    {
-        hr = S_OK;
-    }
-
-    if (SUCCEEDED(hr))
+    if (m_mruIndex <= m_mruSize && _EnumMRUList(m_mruIndex++, (void*)mruEntry, ARRAYSIZE(mruEntry)) > 0)
     {
         hr = SHStrDup(mruEntry, rgelt);
         if (SUCCEEDED(hr) && pceltFetched != nullptr)

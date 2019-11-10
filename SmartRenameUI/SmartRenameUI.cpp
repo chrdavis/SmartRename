@@ -311,6 +311,10 @@ HRESULT CSmartRenameUI::_InitAutoComplete()
             if (SUCCEEDED(hr))
             {
                 hr = m_spSearchAC->Init(GetDlgItem(m_hwnd, IDC_EDIT_SEARCHFOR), m_spSearchACL, nullptr, nullptr);
+                if (SUCCEEDED(hr))
+                {
+                    hr = m_spSearchAC->SetOptions(ACO_AUTOSUGGEST | ACO_AUTOAPPEND | ACO_UPDOWNKEYDROPSLIST);
+                }
             }
         }
 
@@ -323,6 +327,10 @@ HRESULT CSmartRenameUI::_InitAutoComplete()
                 if (SUCCEEDED(hr))
                 {
                     hr = m_spReplaceAC->Init(GetDlgItem(m_hwnd, IDC_EDIT_REPLACEWITH), m_spReplaceACL, nullptr, nullptr);
+                    if (SUCCEEDED(hr))
+                    {
+                        hr = m_spReplaceAC->SetOptions(ACO_AUTOSUGGEST | ACO_AUTOAPPEND | ACO_UPDOWNKEYDROPSLIST);
+                    }
                 }
             }
         }
