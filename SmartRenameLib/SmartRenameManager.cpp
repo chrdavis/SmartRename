@@ -5,6 +5,8 @@
 #include <shlobj.h>
 #include "helpers.h"
 #include <filesystem>
+#include <vector>
+
 namespace fs = std::filesystem;
 
 extern HINSTANCE g_hInst;
@@ -502,24 +504,45 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(_In_ void* pv)
 
                         UINT itemCount = 0;
                         pwtd->spsrm->GetItemCount(&itemCount);
-                        // Add each rename operation
-                        for (UINT u = 0; u <= itemCount; u++)
+
+                        // We add the items to the operation in depth-first order.  This allows child items to be
+                        // renamed before parent items.
+
+                        // Creating a vector of vectors of items of the same depth
+                        std::vector<std::vector<UINT>> matrix(itemCount);
+
+                        for (UINT u = 0; u < itemCount; u++)
                         {
                             CComPtr<ISmartRenameItem> spItem;
                             if (SUCCEEDED(pwtd->spsrm->GetItemByIndex(u, &spItem)))
                             {
-                                bool shouldRename = false;
-                                if (SUCCEEDED(spItem->ShouldRenameItem(flags, &shouldRename)) && shouldRename)
+                                UINT depth = 0;
+                                spItem->get_depth(&depth);
+                                matrix[depth].push_back(u);
+                            }
+                        }
+
+                        // From the greatest depth first, add all items of that depth to the operation
+                        for (LONG v = itemCount - 1; v >= 0; v--)
+                        {
+                            for (auto it : matrix[v])
+                            {
+                                CComPtr<ISmartRenameItem> spItem;
+                                if (SUCCEEDED(pwtd->spsrm->GetItemByIndex(it, &spItem)))
                                 {
-                                    PWSTR newName = nullptr;
-                                    if (SUCCEEDED(spItem->get_newName(&newName)))
+                                    bool shouldRename = false;
+                                    if (SUCCEEDED(spItem->ShouldRenameItem(flags, &shouldRename)) && shouldRename)
                                     {
-                                        CComPtr<IShellItem> spShellItem;
-                                        if (SUCCEEDED(spItem->get_shellItem(&spShellItem)))
+                                        PWSTR newName = nullptr;
+                                        if (SUCCEEDED(spItem->get_newName(&newName)))
                                         {
-                                            spFileOp->RenameItem(spShellItem, newName, nullptr);
+                                            CComPtr<IShellItem> spShellItem;
+                                            if (SUCCEEDED(spItem->get_shellItem(&spShellItem)))
+                                            {
+                                                spFileOp->RenameItem(spShellItem, newName, nullptr);
+                                            }
+                                            CoTaskMemFree(newName);
                                         }
-                                        CoTaskMemFree(newName);
                                     }
                                 }
                             }

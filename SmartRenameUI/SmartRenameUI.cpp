@@ -75,6 +75,8 @@ RepositionMap g_repositionMap[] =
 inline int RECT_WIDTH(RECT& r) { return r.right - r.left; }
 inline int RECT_HEIGHT(RECT& r) { return r.bottom - r.top; }
 
+#define MAX_INPUT_STRING_LEN 1024
+
 // IUnknown
 IFACEMETHODIMP CSmartRenameUI::QueryInterface(__in REFIID riid, __deref_out void** ppv)
 {
@@ -384,14 +386,14 @@ HRESULT CSmartRenameUI::_ReadSettings()
         flags = CSettings::GetFlags();
         m_spsrm->put_flags(flags);
 
-        wchar_t buff[1024];
-        buff[0] = L'\0';
-        CSettings::GetSearchText(buff, ARRAYSIZE(buff));
-        SetWindowText(GetDlgItem(m_hwnd, IDC_EDIT_SEARCHFOR), buff);
+        wchar_t buffer[MAX_INPUT_STRING_LEN];
+        buffer[0] = L'\0';
+        CSettings::GetSearchText(buffer, ARRAYSIZE(buffer));
+        SetDlgItemText(m_hwnd, IDC_EDIT_SEARCHFOR, buffer);
 
-        buff[0] = L'\0';
-        CSettings::GetReplaceText(buff, ARRAYSIZE(buff));
-        SetWindowText(GetDlgItem(m_hwnd, IDC_EDIT_REPLACEWITH), buff);
+        buffer[0] = L'\0';
+        CSettings::GetReplaceText(buffer, ARRAYSIZE(buffer));
+        SetDlgItemText(m_hwnd, IDC_EDIT_REPLACEWITH, buffer);
     }
     else
     {
@@ -412,30 +414,30 @@ HRESULT CSmartRenameUI::_WriteSettings()
         m_spsrm->get_flags(&flags);
         CSettings::SetFlags(flags);
 
-        wchar_t buff[1024];
-        buff[0] = L'\0';
-        GetWindowText(GetDlgItem(m_hwnd, IDC_EDIT_SEARCHFOR), buff, ARRAYSIZE(buff));
-        CSettings::SetSearchText(buff);
+        wchar_t buffer[MAX_INPUT_STRING_LEN];
+        buffer[0] = L'\0';
+        GetDlgItemText(m_hwnd, IDC_EDIT_SEARCHFOR, buffer, ARRAYSIZE(buffer));
+        CSettings::SetSearchText(buffer);
 
         if (CSettings::GetMRUEnabled() && m_spSearchACL)
         {
             CComPtr<ISmartRenameMRU> spSearchMRU;
             if (SUCCEEDED(m_spSearchACL->QueryInterface(IID_PPV_ARGS(&spSearchMRU))))
             {
-                spSearchMRU->AddMRUString(buff);
+                spSearchMRU->AddMRUString(buffer);
             }
         }
 
-        buff[0] = L'\0';
-        GetWindowText(GetDlgItem(m_hwnd, IDC_EDIT_REPLACEWITH), buff, ARRAYSIZE(buff));
-        CSettings::SetReplaceText(buff);
+        buffer[0] = L'\0';
+        GetDlgItemText(m_hwnd, IDC_EDIT_REPLACEWITH, buffer, ARRAYSIZE(buffer));
+        CSettings::SetReplaceText(buffer);
 
         if (CSettings::GetMRUEnabled() && m_spReplaceACL)
         {
             CComPtr<ISmartRenameMRU> spReplaceMRU;
             if (SUCCEEDED(m_spReplaceACL->QueryInterface(IID_PPV_ARGS(&spReplaceMRU))))
             {
-                spReplaceMRU->AddMRUString(buff);
+                spReplaceMRU->AddMRUString(buffer);
             }
         }
     }
@@ -587,14 +589,14 @@ void CSmartRenameUI::_OnInitDlg()
         if (CSettings::GetPersistState())
         {
             flags = CSettings::GetFlags();
-            wchar_t buff[1024];
-            buff[0] = L'\0';
-            CSettings::GetSearchText(buff, ARRAYSIZE(buff));
-            SetWindowText(GetDlgItem(m_hwnd, IDC_EDIT_SEARCHFOR), buff);
+            wchar_t buffer[MAX_INPUT_STRING_LEN];
+            buffer[0] = L'\0';
+            CSettings::GetSearchText(buffer, ARRAYSIZE(buffer));
+            SetDlgItemText(m_hwnd, IDC_EDIT_SEARCHFOR, buffer);
 
-            buff[0] = L'\0';
-            CSettings::GetReplaceText(buff, ARRAYSIZE(buff));
-            SetWindowText(GetDlgItem(m_hwnd, IDC_EDIT_REPLACEWITH), buff);
+            buffer[0] = L'\0';
+            CSettings::GetReplaceText(buffer, ARRAYSIZE(buffer));
+            SetDlgItemText(m_hwnd, IDC_EDIT_REPLACEWITH, buffer);
         }
         else
         {
@@ -836,7 +838,8 @@ void CSmartRenameUI::_OnSearchReplaceChanged()
     CComPtr<ISmartRenameRegEx> spRegEx;
     if (m_spsrm && SUCCEEDED(m_spsrm->get_smartRenameRegEx(&spRegEx)))
     {
-        wchar_t buffer[MAX_PATH] = { 0 };
+        wchar_t buffer[MAX_INPUT_STRING_LEN];
+        buffer[0] = L'\0';
         GetDlgItemText(m_hwnd, IDC_EDIT_SEARCHFOR, buffer, ARRAYSIZE(buffer));
         spRegEx->put_searchTerm(buffer);
 
@@ -1203,14 +1206,14 @@ void CSmartRenameListView::_UpdateHeaderCheckState(_In_ bool check)
     HWND hwndHeader = ListView_GetHeader(m_hwndLV);
     if (hwndHeader)
     {
-        wchar_t szBuff[MAX_PATH] = { 0 };
+        wchar_t buffer[MAX_PATH] = { 0 };
 
         // Retrieve the existing header first so we
         // don't trash the text already there
         HDITEM hdi = { 0 };
         hdi.mask = HDI_FORMAT | HDI_TEXT;
-        hdi.pszText = szBuff;
-        hdi.cchTextMax = ARRAYSIZE(szBuff);
+        hdi.pszText = buffer;
+        hdi.cchTextMax = ARRAYSIZE(buffer);
 
         Header_GetItem(hwndHeader, 0, &hdi);
 

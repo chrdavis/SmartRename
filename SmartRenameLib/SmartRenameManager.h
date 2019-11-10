@@ -64,7 +64,7 @@ protected:
 
     HRESULT _PerformRegExRename();
     HRESULT _PerformFileOperation();
-
+ 
     HRESULT _CreateRegExWorkerThread();
     void _CancelRegExWorkerThread();
     void _WaitForRegExWorkerThread();
