@@ -44,11 +44,11 @@ IFACEMETHODIMP CSmartRenameManager::Advise(_In_ ISmartRenameManagerEvents* renam
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
     m_cookie++;
-    SMART_RENAME_MGR_EVENT srme;
+    RENAME_MGR_EVENT srme;
     srme.cookie = m_cookie;
     srme.pEvents = renameOpEvents;
     renameOpEvents->AddRef();
-    m_SmartRenameManagerEvents.push_back(srme);
+    m_renameManagerEvents.push_back(srme);
 
     *cookie = m_cookie;
 
@@ -60,7 +60,7 @@ IFACEMETHODIMP CSmartRenameManager::UnAdvise(_In_ DWORD cookie)
     HRESULT hr = E_FAIL;
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<RENAME_MGR_EVENT>::iterator it = m_renameManagerEvents.begin(); it != m_renameManagerEvents.end(); ++it)
     {
         if (it->cookie == cookie)
         {
@@ -117,9 +117,9 @@ IFACEMETHODIMP CSmartRenameManager::AddItem(_In_ ISmartRenameItem* pItem)
         int id = 0;
         pItem->get_id(&id);
         // Verify the item isn't already added
-        if (m_smartRenameItems.find(id) == m_smartRenameItems.end())
+        if (m_renameItems.find(id) == m_renameItems.end())
         {
-            m_smartRenameItems[id] = pItem;
+            m_renameItems[id] = pItem;
             pItem->AddRef();
             hr = S_OK;
         }
@@ -138,9 +138,9 @@ IFACEMETHODIMP CSmartRenameManager::GetItemByIndex(_In_ UINT index, _COM_Outptr_
     *ppItem = nullptr;
     CSRWSharedAutoLock lock(&m_lockItems);
     HRESULT hr = E_FAIL;
-    if (index < m_smartRenameItems.size())
+    if (index < m_renameItems.size())
     {
-        std::map<int, ISmartRenameItem*>::iterator it = m_smartRenameItems.begin();
+        std::map<int, ISmartRenameItem*>::iterator it = m_renameItems.begin();
         std::advance(it, index);
         *ppItem = it->second;
         (*ppItem)->AddRef();
@@ -157,10 +157,10 @@ IFACEMETHODIMP CSmartRenameManager::GetItemById(_In_ int id, _COM_Outptr_ ISmart
     CSRWSharedAutoLock lock(&m_lockItems);
     HRESULT hr = E_FAIL;
     std::map<int, ISmartRenameItem*>::iterator it;
-    it = m_smartRenameItems.find(id);
-    if (it !=  m_smartRenameItems.end())
+    it = m_renameItems.find(id);
+    if (it !=  m_renameItems.end())
     {
-        *ppItem = m_smartRenameItems[id];
+        *ppItem = m_renameItems[id];
         (*ppItem)->AddRef();
         hr = S_OK;
     }
@@ -171,7 +171,7 @@ IFACEMETHODIMP CSmartRenameManager::GetItemById(_In_ int id, _COM_Outptr_ ISmart
 IFACEMETHODIMP CSmartRenameManager::GetItemCount(_Out_ UINT* count)
 {
     CSRWSharedAutoLock lock(&m_lockItems);
-    *count = static_cast<UINT>(m_smartRenameItems.size());
+    *count = static_cast<UINT>(m_renameItems.size());
     return S_OK;
 }
 
@@ -180,7 +180,7 @@ IFACEMETHODIMP CSmartRenameManager::GetSelectedItemCount(_Out_ UINT* count)
     *count = 0;
     CSRWSharedAutoLock lock(&m_lockItems);
 
-    for (std::map<int, ISmartRenameItem*>::iterator it = m_smartRenameItems.begin(); it != m_smartRenameItems.end(); ++it)
+    for (std::map<int, ISmartRenameItem*>::iterator it = m_renameItems.begin(); it != m_renameItems.end(); ++it)
     {
         ISmartRenameItem* pItem = it->second;
         bool selected = false;
@@ -198,7 +198,7 @@ IFACEMETHODIMP CSmartRenameManager::GetRenameItemCount(_Out_ UINT* count)
     *count = 0;
     CSRWSharedAutoLock lock(&m_lockItems);
 
-    for (std::map<int, ISmartRenameItem*>::iterator it = m_smartRenameItems.begin(); it != m_smartRenameItems.end(); ++it)
+    for (std::map<int, ISmartRenameItem*>::iterator it = m_renameItems.begin(); it != m_renameItems.end(); ++it)
     {
         ISmartRenameItem* pItem = it->second;
         bool shouldRename = false;
@@ -868,7 +868,7 @@ void CSmartRenameManager::_OnItemAdded(_In_ ISmartRenameItem* renameItem)
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<RENAME_MGR_EVENT>::iterator it = m_renameManagerEvents.begin(); it != m_renameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -881,7 +881,7 @@ void CSmartRenameManager::_OnUpdate(_In_ ISmartRenameItem* renameItem)
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<RENAME_MGR_EVENT>::iterator it = m_renameManagerEvents.begin(); it != m_renameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -894,7 +894,7 @@ void CSmartRenameManager::_OnError(_In_ ISmartRenameItem* renameItem)
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<RENAME_MGR_EVENT>::iterator it = m_renameManagerEvents.begin(); it != m_renameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -907,7 +907,7 @@ void CSmartRenameManager::_OnRegExStarted(_In_ DWORD threadId)
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<RENAME_MGR_EVENT>::iterator it = m_renameManagerEvents.begin(); it != m_renameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -920,7 +920,7 @@ void CSmartRenameManager::_OnRegExCanceled(_In_ DWORD threadId)
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<RENAME_MGR_EVENT>::iterator it = m_renameManagerEvents.begin(); it != m_renameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -933,7 +933,7 @@ void CSmartRenameManager::_OnRegExCompleted(_In_ DWORD threadId)
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<RENAME_MGR_EVENT>::iterator it = m_renameManagerEvents.begin(); it != m_renameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -946,7 +946,7 @@ void CSmartRenameManager::_OnRenameStarted()
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<RENAME_MGR_EVENT>::iterator it = m_renameManagerEvents.begin(); it != m_renameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -959,7 +959,7 @@ void CSmartRenameManager::_OnRenameCompleted()
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<RENAME_MGR_EVENT>::iterator it = m_renameManagerEvents.begin(); it != m_renameManagerEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -973,7 +973,7 @@ void CSmartRenameManager::_ClearEventHandlers()
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
     // Cleanup event handlers
-    for (std::vector<SMART_RENAME_MGR_EVENT>::iterator it = m_SmartRenameManagerEvents.begin(); it != m_SmartRenameManagerEvents.end(); ++it)
+    for (std::vector<RENAME_MGR_EVENT>::iterator it = m_renameManagerEvents.begin(); it != m_renameManagerEvents.end(); ++it)
     {
         it->cookie = 0;
         if (it->pEvents)
@@ -983,7 +983,7 @@ void CSmartRenameManager::_ClearEventHandlers()
         }
     }
 
-    m_SmartRenameManagerEvents.clear();
+    m_renameManagerEvents.clear();
 }
 
 void CSmartRenameManager::_ClearSmartRenameItems()
@@ -991,13 +991,13 @@ void CSmartRenameManager::_ClearSmartRenameItems()
     CSRWExclusiveAutoLock lock(&m_lockItems);
 
     // Cleanup smart rename items
-    for (std::map<int, ISmartRenameItem*>::iterator it = m_smartRenameItems.begin(); it != m_smartRenameItems.end(); ++it)
+    for (std::map<int, ISmartRenameItem*>::iterator it = m_renameItems.begin(); it != m_renameItems.end(); ++it)
     {
         ISmartRenameItem* pItem = it->second;
         pItem->Release();
     }
 
-    m_smartRenameItems.clear();
+    m_renameItems.clear();
 }
 
 void CSmartRenameManager::_Cleanup()

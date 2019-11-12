@@ -97,7 +97,7 @@ protected:
     DWORD m_cookie = 0;
     DWORD m_regExAdviseCookie = 0;
 
-    struct SMART_RENAME_MGR_EVENT
+    struct RENAME_MGR_EVENT
     {
         ISmartRenameManagerEvents* pEvents;
         DWORD cookie;
@@ -106,8 +106,8 @@ protected:
     CComPtr<ISmartRenameItemFactory> m_spItemFactory;
     CComPtr<ISmartRenameRegEx> m_spRegEx;
 
-    _Guarded_by_(m_lockEvents) std::vector<SMART_RENAME_MGR_EVENT> m_SmartRenameManagerEvents;
-    _Guarded_by_(m_lockItems) std::map<int, ISmartRenameItem*> m_smartRenameItems;
+    _Guarded_by_(m_lockEvents) std::vector<RENAME_MGR_EVENT> m_renameManagerEvents;
+    _Guarded_by_(m_lockItems) std::map<int, ISmartRenameItem*> m_renameItems;
 
     // Parent HWND used by IFileOperation
     HWND m_hwndParent = nullptr;

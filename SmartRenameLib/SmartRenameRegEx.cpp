@@ -37,11 +37,11 @@ IFACEMETHODIMP CSmartRenameRegEx::Advise(_In_ ISmartRenameRegExEvents* regExEven
 {
     CSRWExclusiveAutoLock lock(&m_lockEvents);
     m_cookie++;
-    SMART_RENAME_REGEX_EVENT srre;
+    RENAME_REGEX_EVENT srre;
     srre.cookie = m_cookie;
     srre.pEvents = regExEvents;
     regExEvents->AddRef();
-    m_smartRenameRegExEvents.push_back(srre);
+    m_renameRegExEvents.push_back(srre);
 
     *cookie = m_cookie;
 
@@ -53,7 +53,7 @@ IFACEMETHODIMP CSmartRenameRegEx::UnAdvise(_In_ DWORD cookie)
     HRESULT hr = E_FAIL;
     CSRWExclusiveAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_REGEX_EVENT>::iterator it = m_smartRenameRegExEvents.begin(); it != m_smartRenameRegExEvents.end(); ++it)
+    for (std::vector<RENAME_REGEX_EVENT>::iterator it = m_renameRegExEvents.begin(); it != m_renameRegExEvents.end(); ++it)
     {
         if (it->cookie == cookie)
         {
@@ -265,7 +265,7 @@ void CSmartRenameRegEx::_OnSearchTermChanged()
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_REGEX_EVENT>::iterator it = m_smartRenameRegExEvents.begin(); it != m_smartRenameRegExEvents.end(); ++it)
+    for (std::vector<RENAME_REGEX_EVENT>::iterator it = m_renameRegExEvents.begin(); it != m_renameRegExEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -278,7 +278,7 @@ void CSmartRenameRegEx::_OnReplaceTermChanged()
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_REGEX_EVENT>::iterator it = m_smartRenameRegExEvents.begin(); it != m_smartRenameRegExEvents.end(); ++it)
+    for (std::vector<RENAME_REGEX_EVENT>::iterator it = m_renameRegExEvents.begin(); it != m_renameRegExEvents.end(); ++it)
     {
         if (it->pEvents)
         {
@@ -291,7 +291,7 @@ void CSmartRenameRegEx::_OnFlagsChanged()
 {
     CSRWSharedAutoLock lock(&m_lockEvents);
 
-    for (std::vector<SMART_RENAME_REGEX_EVENT>::iterator it = m_smartRenameRegExEvents.begin(); it != m_smartRenameRegExEvents.end(); ++it)
+    for (std::vector<RENAME_REGEX_EVENT>::iterator it = m_renameRegExEvents.begin(); it != m_renameRegExEvents.end(); ++it)
     {
         if (it->pEvents)
         {
