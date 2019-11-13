@@ -23,6 +23,7 @@ CSmartRenameMenu::CSmartRenameMenu()
 CSmartRenameMenu::~CSmartRenameMenu()
 {
     m_spdo = nullptr;
+    DeleteObject(m_hbmpIcon);
     DllRelease();
 }
 
@@ -82,7 +83,11 @@ HRESULT CSmartRenameMenu::QueryContextMenu(HMENU hMenu, UINT index, UINT uIDFirs
             if (hIcon)
             {
                 mii.fMask |= MIIM_BITMAP;
-                mii.hbmpItem = CreateBitmapFromIcon(hIcon);
+                if (m_hbmpIcon == NULL)
+                {
+                    m_hbmpIcon = CreateBitmapFromIcon(hIcon);
+                }
+                mii.hbmpItem = m_hbmpIcon;
                 DestroyIcon(hIcon);
             }
         }
