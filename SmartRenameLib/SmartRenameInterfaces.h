@@ -93,10 +93,10 @@ public:
     IFACEMETHOD(GetRenameItemCount)(_Out_ UINT* count) = 0;
     IFACEMETHOD(get_flags)(_Out_ DWORD* flags) = 0;
     IFACEMETHOD(put_flags)(_In_ DWORD flags) = 0;
-    IFACEMETHOD(get_smartRenameRegEx)(_COM_Outptr_ ISmartRenameRegEx** ppRegEx) = 0;
-    IFACEMETHOD(put_smartRenameRegEx)(_In_ ISmartRenameRegEx* pRegEx) = 0;
-    IFACEMETHOD(get_smartRenameItemFactory)(_COM_Outptr_ ISmartRenameItemFactory** ppItemFactory) = 0;
-    IFACEMETHOD(put_smartRenameItemFactory)(_In_ ISmartRenameItemFactory* pItemFactory) = 0;
+    IFACEMETHOD(get_renameRegEx)(_COM_Outptr_ ISmartRenameRegEx** ppRegEx) = 0;
+    IFACEMETHOD(put_renameRegEx)(_In_ ISmartRenameRegEx* pRegEx) = 0;
+    IFACEMETHOD(get_renameItemFactory)(_COM_Outptr_ ISmartRenameItemFactory** ppItemFactory) = 0;
+    IFACEMETHOD(put_renameItemFactory)(_In_ ISmartRenameItemFactory* pItemFactory) = 0;
 };
 
 interface __declspec(uuid("E6679DEB-460D-42C1-A7A8-E25897061C99")) ISmartRenameUI : public IUnknown

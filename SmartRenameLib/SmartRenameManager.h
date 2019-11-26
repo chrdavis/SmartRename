@@ -29,10 +29,10 @@ public:
     IFACEMETHODIMP GetRenameItemCount(_Out_ UINT* count);
     IFACEMETHODIMP get_flags(_Out_ DWORD* flags);
     IFACEMETHODIMP put_flags(_In_ DWORD flags);
-    IFACEMETHODIMP get_smartRenameRegEx(_COM_Outptr_ ISmartRenameRegEx** ppRegEx);
-    IFACEMETHODIMP put_smartRenameRegEx(_In_ ISmartRenameRegEx* pRegEx);
-    IFACEMETHODIMP get_smartRenameItemFactory(_COM_Outptr_ ISmartRenameItemFactory** ppItemFactory);
-    IFACEMETHODIMP put_smartRenameItemFactory(_In_ ISmartRenameItemFactory* pItemFactory);
+    IFACEMETHODIMP get_renameRegEx(_COM_Outptr_ ISmartRenameRegEx** ppRegEx);
+    IFACEMETHODIMP put_renameRegEx(_In_ ISmartRenameRegEx* pRegEx);
+    IFACEMETHODIMP get_renameItemFactory(_COM_Outptr_ ISmartRenameItemFactory** ppItemFactory);
+    IFACEMETHODIMP put_renameItemFactory(_In_ ISmartRenameItemFactory* pItemFactory);
 
     // ISmartRenameRegExEvents
     IFACEMETHODIMP OnSearchTermChanged(_In_ PCWSTR searchTerm);

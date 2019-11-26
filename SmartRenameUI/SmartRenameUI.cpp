@@ -836,7 +836,7 @@ void CSmartRenameUI::_OnSearchReplaceChanged()
 {
     // Pass updated search and replace terms to the ISmartRenameRegEx handler
     CComPtr<ISmartRenameRegEx> spRegEx;
-    if (m_spsrm && SUCCEEDED(m_spsrm->get_smartRenameRegEx(&spRegEx)))
+    if (m_spsrm && SUCCEEDED(m_spsrm->get_renameRegEx(&spRegEx)))
     {
         wchar_t buffer[MAX_INPUT_STRING_LEN];
         buffer[0] = L'\0';

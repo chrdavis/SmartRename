@@ -105,7 +105,7 @@ HRESULT _ParseEnumItems(_In_ IEnumShellItems* pesi, _In_ ISmartRenameManager* ps
         while ((S_OK == pesi->Next(1, &spsi, &celtFetched)) && (SUCCEEDED(hr)))
         {
             CComPtr<ISmartRenameItemFactory> spsrif;
-            hr = psrm->get_smartRenameItemFactory(&spsrif);
+            hr = psrm->get_renameItemFactory(&spsrif);
             if (SUCCEEDED(hr))
             {
                 CComPtr<ISmartRenameItem> spNewItem;

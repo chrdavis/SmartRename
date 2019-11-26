@@ -40,7 +40,7 @@ int APIENTRY wWinMain(
             if (SUCCEEDED(CSmartRenameItem::s_CreateInstance(nullptr, IID_PPV_ARGS(&spsrif))))
             {
                 // Pass the factory to the manager
-                if (SUCCEEDED(spsrm->put_smartRenameItemFactory(spsrif)))
+                if (SUCCEEDED(spsrm->put_renameItemFactory(spsrif)))
                 {
                     // Create the smart rename UI instance and pass the manager
                     CComPtr<ISmartRenameUI> spsrui;

@@ -229,7 +229,7 @@ IFACEMETHODIMP CSmartRenameManager::put_flags(_In_ DWORD flags)
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameManager::get_smartRenameRegEx(_COM_Outptr_ ISmartRenameRegEx** ppRegEx)
+IFACEMETHODIMP CSmartRenameManager::get_renameRegEx(_COM_Outptr_ ISmartRenameRegEx** ppRegEx)
 {
     *ppRegEx = nullptr;
     HRESULT hr = _EnsureRegEx();
@@ -241,14 +241,14 @@ IFACEMETHODIMP CSmartRenameManager::get_smartRenameRegEx(_COM_Outptr_ ISmartRena
     return hr;
 }
 
-IFACEMETHODIMP CSmartRenameManager::put_smartRenameRegEx(_In_ ISmartRenameRegEx* pRegEx)
+IFACEMETHODIMP CSmartRenameManager::put_renameRegEx(_In_ ISmartRenameRegEx* pRegEx)
 {
     _ClearRegEx();
     m_spRegEx = pRegEx;
     return S_OK;
 }
 
-IFACEMETHODIMP CSmartRenameManager::get_smartRenameItemFactory(_COM_Outptr_ ISmartRenameItemFactory** ppItemFactory)
+IFACEMETHODIMP CSmartRenameManager::get_renameItemFactory(_COM_Outptr_ ISmartRenameItemFactory** ppItemFactory)
 {
     *ppItemFactory = nullptr;
     HRESULT hr = E_FAIL;
@@ -261,7 +261,7 @@ IFACEMETHODIMP CSmartRenameManager::get_smartRenameItemFactory(_COM_Outptr_ ISma
     return hr;
 }
 
-IFACEMETHODIMP CSmartRenameManager::put_smartRenameItemFactory(_In_ ISmartRenameItemFactory* pItemFactory)
+IFACEMETHODIMP CSmartRenameManager::put_renameItemFactory(_In_ ISmartRenameItemFactory* pItemFactory)
 {
     m_spItemFactory = pItemFactory;
     return S_OK;
@@ -493,7 +493,7 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(_In_ void* pv)
             if (WaitForSingleObject(pwtd->startEvent, INFINITE) == WAIT_OBJECT_0)
             {
                 CComPtr<ISmartRenameRegEx> spRenameRegEx;
-                if (SUCCEEDED(pwtd->spsrm->get_smartRenameRegEx(&spRenameRegEx)))
+                if (SUCCEEDED(pwtd->spsrm->get_renameRegEx(&spRenameRegEx)))
                 {
                     // Create IFileOperation interface
                     CComPtr<IFileOperation> spFileOp;
@@ -642,7 +642,7 @@ DWORD WINAPI CSmartRenameManager::s_regexWorkerThread(_In_ void* pv)
             if (WaitForSingleObject(pwtd->startEvent, INFINITE) == WAIT_OBJECT_0)
             {
                 CComPtr<ISmartRenameRegEx> spRenameRegEx;
-                if (SUCCEEDED(pwtd->spsrm->get_smartRenameRegEx(&spRenameRegEx)))
+                if (SUCCEEDED(pwtd->spsrm->get_renameRegEx(&spRenameRegEx)))
                 {
                     DWORD flags = 0;
                     spRenameRegEx->get_flags(&flags);

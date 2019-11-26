@@ -79,7 +79,7 @@ namespace SmartRenameManagerTests
 
             // TODO: Setup match and replace parameters
             CComPtr<ISmartRenameRegEx> renRegEx;
-            Assert::IsTrue(mgr->get_smartRenameRegEx(&renRegEx) == S_OK);
+            Assert::IsTrue(mgr->get_renameRegEx(&renRegEx) == S_OK);
             renRegEx->put_flags(flags);
             renRegEx->put_searchTerm(searchTerm.c_str());
             renRegEx->put_replaceTerm(replaceTerm.c_str());
