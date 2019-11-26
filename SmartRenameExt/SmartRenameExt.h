@@ -53,6 +53,7 @@ private:
     ~CSmartRenameMenu();
 
     long m_refCount = 1;
+    HBITMAP m_hbmpIcon = NULL;
     CComPtr<IDataObject> m_spdo;
 };
 
