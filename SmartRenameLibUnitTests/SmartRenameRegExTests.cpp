@@ -186,7 +186,35 @@ namespace SmartRenameRegExTests
                 CoTaskMemFree(result);
             }
         }
+    };
 
+    TEST_CLASS(RegExEventsTests)
+    {
+    public:
+        TEST_METHOD(VerifyEventsFire)
+        {
+            CComPtr<ISmartRenameRegEx> renameRegEx;
+            Assert::IsTrue(CSmartRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+            CMockSmartRenameRegExEvents* mockEvents = new CMockSmartRenameRegExEvents();
+            CComPtr<ISmartRenameRegExEvents> regExEvents;
+            Assert::IsTrue(mockEvents->QueryInterface(IID_PPV_ARGS(&regExEvents)) == S_OK);
+            DWORD cookie = 0;
+            Assert::IsTrue(renameRegEx->Advise(regExEvents, &cookie) == S_OK);
+            DWORD flags = MatchAllOccurences | UseRegularExpressions | CaseSensitive;
+            Assert::IsTrue(renameRegEx->put_flags(flags) == S_OK);
+            Assert::IsTrue(renameRegEx->put_searchTerm(L"FOO") == S_OK);
+            Assert::IsTrue(renameRegEx->put_replaceTerm(L"BAR") == S_OK);
+            Assert::IsTrue(lstrcmpi(L"FOO", mockEvents->m_searchTerm) == 0);
+            Assert::IsTrue(lstrcmpi(L"BAR", mockEvents->m_replaceTerm) == 0);
+            Assert::IsTrue(flags == mockEvents->m_flags);
+            Assert::IsTrue(renameRegEx->UnAdvise(cookie) == S_OK);
+            mockEvents->Release();
+        }
+    };
+
+    TEST_CLASS(RegExTests)
+    {
+    public:
         TEST_METHOD(VerifyReplaceFirstOnlyUseRegEx)
         {
             CComPtr<ISmartRenameRegEx> renameRegEx;
@@ -294,7 +322,7 @@ namespace SmartRenameRegExTests
 
             SearchReplaceExpected sreTable[] =
             {
-                { L".*", L"Foo", L"AAAAAA", L"FooAAAA" },
+                { L".", L"Foo", L"AAAAAA", L"FooAAAAA" },
             };
 
             for (int i = 0; i < ARRAYSIZE(sreTable); i++)
@@ -308,24 +336,54 @@ namespace SmartRenameRegExTests
             }
         }
 
-        TEST_METHOD(VerifyEventsFire)
+        TEST_METHOD(VerifyMatchBeginningTextUseRegEx)
         {
             CComPtr<ISmartRenameRegEx> renameRegEx;
             Assert::IsTrue(CSmartRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
-            CMockSmartRenameRegExEvents* mockEvents = new CMockSmartRenameRegExEvents();
-            CComPtr<ISmartRenameRegExEvents> regExEvents;
-            Assert::IsTrue(mockEvents->QueryInterface(IID_PPV_ARGS(&regExEvents)) == S_OK);
-            DWORD cookie = 0;
-            Assert::IsTrue(renameRegEx->Advise(regExEvents, &cookie) == S_OK);
-            DWORD flags = MatchAllOccurences | UseRegularExpressions | CaseSensitive;
+            DWORD flags = UseRegularExpressions;
             Assert::IsTrue(renameRegEx->put_flags(flags) == S_OK);
-            Assert::IsTrue(renameRegEx->put_searchTerm(L"FOO") == S_OK);
-            Assert::IsTrue(renameRegEx->put_replaceTerm(L"BAR") == S_OK);
-            Assert::IsTrue(lstrcmpi(L"FOO", mockEvents->m_searchTerm) == 0);
-            Assert::IsTrue(lstrcmpi(L"BAR", mockEvents->m_replaceTerm) == 0);
-            Assert::IsTrue(flags == mockEvents->m_flags);
-            Assert::IsTrue(renameRegEx->UnAdvise(cookie) == S_OK);
-            mockEvents->Release();
+
+            SearchReplaceExpected sreTable[] =
+            {
+                { L"^Foo", L"Baa", L"FooBar", L"BaaBar" },
+                { L"^Foo", L"Baa", L"BarFoo", L"BarFoo" },
+                { L"^Foo", L"Baa", L"FooBarFoo", L"BaaBarFoo" },
+            };
+
+            for (int i = 0; i < ARRAYSIZE(sreTable); i++)
+            {
+                PWSTR result = nullptr;
+                Assert::IsTrue(renameRegEx->put_searchTerm(sreTable[i].search) == S_OK);
+                Assert::IsTrue(renameRegEx->put_replaceTerm(sreTable[i].replace) == S_OK);
+                Assert::IsTrue(renameRegEx->Replace(sreTable[i].test, &result) == S_OK);
+                Assert::IsTrue(wcscmp(result, sreTable[i].expected) == 0);
+                CoTaskMemFree(result);
+            }
+        }
+
+        TEST_METHOD(VerifyMatchEndingTextUseRegEx)
+        {
+            CComPtr<ISmartRenameRegEx> renameRegEx;
+            Assert::IsTrue(CSmartRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+            DWORD flags = UseRegularExpressions;
+            Assert::IsTrue(renameRegEx->put_flags(flags) == S_OK);
+
+            SearchReplaceExpected sreTable[] =
+            {
+                { L"Bar$", L"Baa", L"FooBar", L"FooBaa" },
+                { L"Bar$", L"Baa", L"BarFoo", L"BarFoo" },
+                { L"Bar$", L"Baa", L"BarFooBar", L"BarFooBaa" },
+            };
+
+            for (int i = 0; i < ARRAYSIZE(sreTable); i++)
+            {
+                PWSTR result = nullptr;
+                Assert::IsTrue(renameRegEx->put_searchTerm(sreTable[i].search) == S_OK);
+                Assert::IsTrue(renameRegEx->put_replaceTerm(sreTable[i].replace) == S_OK);
+                Assert::IsTrue(renameRegEx->Replace(sreTable[i].test, &result) == S_OK);
+                Assert::IsTrue(wcscmp(result, sreTable[i].expected) == 0);
+                CoTaskMemFree(result);
+            }
         }
     };
 }
