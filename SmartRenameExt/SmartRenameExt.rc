@@ -92,7 +92,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_SMARTRENAME         "SmartRename"
+    IDS_SMARTRENAME         "Smart&Rename"
 END
 
 #endif    // English (United States) resources
