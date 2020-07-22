@@ -209,7 +209,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:SmartRename"
         "ProductCode" = "8:{688CD75D-0CEE-4E10-8552-7AE64CA687C7}"
-        "PackageCode" = "8:{6106C80F-2706-41D4-9B89-89FC6ACAD163}"
+        "PackageCode" = "8:{39C1D063-F5C7-4BE3-9A63-D3BAB11713A4}"
         "UpgradeCode" = "8:{71B5C174-58D2-4287-A3E8-28845BA75862}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
@@ -312,6 +312,14 @@
                                     "ValueTypes" = "3:1"
                                     "Value" = "8:SmartRename Shell Extension"
                                     }
+                                    "{ADCFDA98-8FDD-45E4-90BC-E3D20B029870}:_78BCC699642B4437B7A950FAD5B26909"
+                                    {
+                                    "Name" = "8:ContextMenuOptIn"
+                                    "Condition" = "8:"
+                                    "Transitive" = "11:FALSE"
+                                    "ValueTypes" = "3:1"
+                                    "Value" = "8:"
+                                    }
                                 }
                             }
                         }
@@ -379,6 +387,14 @@
                                         }
                                         "Values"
                                         {
+                                            "{ADCFDA98-8FDD-45E4-90BC-E3D20B029870}:_743D0B50C9E34D489D0D91B2B537525F"
+                                            {
+                                            "Name" = "8:ContextMenuOptIn"
+                                            "Condition" = "8:"
+                                            "Transitive" = "11:FALSE"
+                                            "ValueTypes" = "3:1"
+                                            "Value" = "8:"
+                                            }
                                             "{ADCFDA98-8FDD-45E4-90BC-E3D20B029870}:_E71AC04B540E402697286F04CE1B2590"
                                             {
                                             "Name" = "8:"

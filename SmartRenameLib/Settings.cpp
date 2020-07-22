@@ -177,10 +177,10 @@ typedef struct {
     MRUCMPPROC lpfnCompare;
 } MRUINFO;
 
-typedef HANDLE (*CreateMRUListFn)(MRUINFO* pmi);
-typedef int (*AddMRUStringFn)(HANDLE hMRU, LPCWSTR data);
-typedef int (*EnumMRUListFn)(HANDLE hMRU, int nItem, void* lpData, UINT uLen);
-typedef int (*FreeMRUListFn)(HANDLE hMRU);
+typedef HANDLE (WINAPI *CreateMRUListFn)(MRUINFO* pmi);
+typedef int (WINAPI *AddMRUStringFn)(HANDLE hMRU, LPCWSTR data);
+typedef int (WINAPI *EnumMRUListFn)(HANDLE hMRU, int nItem, void* lpData, UINT uLen);
+typedef int (WINAPI *FreeMRUListFn)(HANDLE hMRU);
 
 class CRenameMRU :
     public IEnumString,
