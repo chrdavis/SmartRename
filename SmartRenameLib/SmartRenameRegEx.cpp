@@ -204,7 +204,7 @@ HRESULT CSmartRenameRegEx::Replace(_In_ PCWSTR source, _Outptr_ PWSTR* result)
             if (m_flags & UseRegularExpressions)
             {
                 std::wregex pattern(m_searchTerm, (!(m_flags & CaseSensitive)) ? regex_constants::icase | regex_constants::ECMAScript : regex_constants::ECMAScript);
-                res = regex_replace(sourceToUse, pattern, replaceTerm, (m_flags & MatchAllOccurences) ? regex_constants::match_default : regex_constants::format_first_only);
+                res = regex_replace(sourceToUse, pattern, replaceTerm, (m_flags & MatchAllOccurrences) ? regex_constants::match_default : regex_constants::format_first_only);
             }
             else
             {
@@ -219,7 +219,7 @@ HRESULT CSmartRenameRegEx::Replace(_In_ PCWSTR source, _Outptr_ PWSTR* result)
                         pos += replaceTerm.length();
                     }
 
-                    if (!(m_flags & MatchAllOccurences))
+                    if (!(m_flags & MatchAllOccurrences))
                     {
                         break;
                     }

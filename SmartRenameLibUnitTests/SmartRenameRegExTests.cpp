@@ -82,7 +82,7 @@ namespace SmartRenameRegExTests
             Assert::IsTrue(CSmartRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
             DWORD flags = 0;
             Assert::IsTrue(renameRegEx->get_flags(&flags) == S_OK);
-            Assert::IsTrue(flags == MatchAllOccurences);
+            Assert::IsTrue(flags == MatchAllOccurrences);
         }
 
         TEST_METHOD(VerifyCaseSensitiveSearch)
@@ -140,7 +140,7 @@ namespace SmartRenameRegExTests
         {
             CComPtr<ISmartRenameRegEx> renameRegEx;
             Assert::IsTrue(CSmartRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
-            DWORD flags = MatchAllOccurences;
+            DWORD flags = MatchAllOccurrences;
             Assert::IsTrue(renameRegEx->put_flags(flags) == S_OK);
 
             SearchReplaceExpected sreTable[] =
@@ -165,7 +165,7 @@ namespace SmartRenameRegExTests
         {
             CComPtr<ISmartRenameRegEx> renameRegEx;
             Assert::IsTrue(CSmartRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
-            DWORD flags = MatchAllOccurences | CaseSensitive;
+            DWORD flags = MatchAllOccurrences | CaseSensitive;
             Assert::IsTrue(renameRegEx->put_flags(flags) == S_OK);
 
             SearchReplaceExpected sreTable[] =
@@ -200,7 +200,7 @@ namespace SmartRenameRegExTests
             Assert::IsTrue(mockEvents->QueryInterface(IID_PPV_ARGS(&regExEvents)) == S_OK);
             DWORD cookie = 0;
             Assert::IsTrue(renameRegEx->Advise(regExEvents, &cookie) == S_OK);
-            DWORD flags = MatchAllOccurences | UseRegularExpressions | CaseSensitive;
+            DWORD flags = MatchAllOccurrences | UseRegularExpressions | CaseSensitive;
             Assert::IsTrue(renameRegEx->put_flags(flags) == S_OK);
             Assert::IsTrue(renameRegEx->put_searchTerm(L"FOO") == S_OK);
             Assert::IsTrue(renameRegEx->put_replaceTerm(L"BAR") == S_OK);
@@ -244,7 +244,7 @@ namespace SmartRenameRegExTests
         {
             CComPtr<ISmartRenameRegEx> renameRegEx;
             Assert::IsTrue(CSmartRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
-            DWORD flags = MatchAllOccurences | UseRegularExpressions;
+            DWORD flags = MatchAllOccurrences | UseRegularExpressions;
             Assert::IsTrue(renameRegEx->put_flags(flags) == S_OK);
 
             SearchReplaceExpected sreTable[] =
@@ -269,7 +269,7 @@ namespace SmartRenameRegExTests
         {
             CComPtr<ISmartRenameRegEx> renameRegEx;
             Assert::IsTrue(CSmartRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
-            DWORD flags = MatchAllOccurences | UseRegularExpressions | CaseSensitive;
+            DWORD flags = MatchAllOccurrences | UseRegularExpressions | CaseSensitive;
             Assert::IsTrue(renameRegEx->put_flags(flags) == S_OK);
 
             SearchReplaceExpected sreTable[] =
@@ -294,7 +294,7 @@ namespace SmartRenameRegExTests
         {
             CComPtr<ISmartRenameRegEx> renameRegEx;
             Assert::IsTrue(CSmartRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
-            DWORD flags = MatchAllOccurences | UseRegularExpressions;
+            DWORD flags = MatchAllOccurrences | UseRegularExpressions;
             Assert::IsTrue(renameRegEx->put_flags(flags) == S_OK);
 
             SearchReplaceExpected sreTable[] =

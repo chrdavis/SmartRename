@@ -37,7 +37,7 @@ FlagCheckboxMap g_flagCheckboxMap[] =
     { EnumerateItems,        IDC_CHECK_ENUMITEMS },
     { ExcludeFiles,          IDC_CHECK_EXCLUDEFILES },
     { CaseSensitive,         IDC_CHECK_CASESENSITIVE },
-    { MatchAllOccurences,    IDC_CHECK_MATCHALLOCCURENCES },
+    { MatchAllOccurrences,   IDC_CHECK_MATCHALLOCCURRENCES },
     { ExcludeFolders,        IDC_CHECK_EXCLUDEFOLDERS },
     { NameOnly,              IDC_CHECK_NAMEONLY },
     { ExtensionOnly,         IDC_CHECK_EXTENSIONONLY }
@@ -652,7 +652,7 @@ void CSmartRenameUI::_OnCommand(_In_ WPARAM wParam, _In_ LPARAM lParam)
     case IDC_CHECK_EXCLUDEFILES:
     case IDC_CHECK_EXCLUDEFOLDERS:
     case IDC_CHECK_EXCLUDESUBFOLDERS:
-    case IDC_CHECK_MATCHALLOCCURENCES:
+    case IDC_CHECK_MATCHALLOCCURRENCES:
     case IDC_CHECK_USEREGEX:
     case IDC_CHECK_EXTENSIONONLY:
     case IDC_CHECK_NAMEONLY:

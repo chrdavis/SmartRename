@@ -7,7 +7,7 @@
 #include "MockSmartRenameManagerEvents.h"
 #include "TestFileHelper.h"
 
-#define DEFAULT_FLAGS MatchAllOccurences
+#define DEFAULT_FLAGS MatchAllOccurrences
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 

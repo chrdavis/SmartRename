@@ -4,7 +4,7 @@
 #include <string>
 #include "srwlock.h"
 
-#define DEFAULT_FLAGS MatchAllOccurences
+#define DEFAULT_FLAGS MatchAllOccurrences
 
 class CSmartRenameRegEx : public ISmartRenameRegEx
 {

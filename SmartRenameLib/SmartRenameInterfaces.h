@@ -4,7 +4,7 @@
 enum SmartRenameFlags
 {
     CaseSensitive = 0x1,
-    MatchAllOccurences = 0x2,
+    MatchAllOccurrences = 0x2,
     UseRegularExpressions = 0x4,
     EnumerateItems = 0x8,
     ExcludeFiles = 0x10,
