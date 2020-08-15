@@ -62,6 +62,8 @@ protected:
     void _ClearEventHandlers();
     void _ClearSmartRenameItems();
 
+    static DWORD _GetDefaultFileOpFlags();
+
     HRESULT _PerformRegExRename();
     HRESULT _PerformFileOperation();
  

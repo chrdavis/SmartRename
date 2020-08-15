@@ -3,6 +3,7 @@
 #include "SmartRenameRegEx.h" // Default RegEx handler
 #include <algorithm>
 #include <shlobj.h>
+#include <versionhelpers.h>
 #include "helpers.h"
 #include <filesystem>
 #include <vector>
@@ -11,8 +12,6 @@ namespace fs = std::filesystem;
 
 extern HINSTANCE g_hInst;
 
-// The default FOF flags to use in the rename operations
-#define FOF_DEFAULTFLAGS (FOF_ALLOWUNDO | FOFX_ADDUNDORECORD | FOFX_SHOWELEVATIONPROMPT | FOF_RENAMEONCOLLISION)
 
 IFACEMETHODIMP_(ULONG) CSmartRenameManager::AddRef()
 {
@@ -482,6 +481,17 @@ HRESULT CSmartRenameManager::_CreateFileOpWorkerThread()
     return hr;
 }
 
+// The default FOF flags to use in the rename operations
+DWORD CSmartRenameManager::_GetDefaultFileOpFlags()
+{
+    UINT flags = (FOF_ALLOWUNDO | FOFX_SHOWELEVATIONPROMPT | FOF_RENAMEONCOLLISION);
+    if (IsWindows8OrGreater())
+    {
+        flags |= FOFX_ADDUNDORECORD;
+    }
+    return flags;
+}
+
 DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(_In_ void* pv)
 {
     if (SUCCEEDED(CoInitializeEx(NULL, 0)))
@@ -549,7 +559,7 @@ DWORD WINAPI CSmartRenameManager::s_fileOpWorkerThread(_In_ void* pv)
                         }
 
                         // Set the operation flags
-                        if (SUCCEEDED(spFileOp->SetOperationFlags(FOF_DEFAULTFLAGS)))
+                        if (SUCCEEDED(spFileOp->SetOperationFlags(_GetDefaultFileOpFlags())))
                         {
                             // Set the parent window
                             if (pwtd->hwndParent)

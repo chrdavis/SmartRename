@@ -204,7 +204,14 @@ BOOL GetEnumeratedFileName(__out_ecount(cchMax) PWSTR pszUniqueName, UINT cchMax
             hr = StringCchCopy(pszUniqueName, cchMax, pszDir);
             if (SUCCEEDED(hr))
             {
-                hr = PathCchAddBackslashEx(pszUniqueName, cchMax, &pszName, nullptr);
+                size_t cch = wcslen(pszUniqueName);
+                pszName = pszUniqueName + cch;
+                size_t cchRemaining = cchMax - cch;
+                if (cch && (L'\\' != *(pszName - 1)))
+                {
+                    hr = StringCchCopyEx(pszName, cchRemaining, L"\\", &pszName, &cchRemaining, 0);
+                }
+
                 if (SUCCEEDED(hr))
                 {
                     cchDir = lstrlen(pszDir);
