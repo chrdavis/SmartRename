@@ -364,8 +364,32 @@ void CSmartRenameUI::_EnumerateItems(_In_ IDataObject* pdtobj)
     // Enumerate the data object and popuplate the manager
     if (m_spsrm)
     {
+        // Add a progress dialog in case enumeration of items takes a long time
+        // This also allows the user to cancel enumeration.
+        CComPtr<IProgressDialog> sppd;
+        if (SUCCEEDED(CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&sppd))))
+        {
+            wchar_t buff[100] = { 0 };
+            LoadString(g_hInst, IDS_LOADING, buff, ARRAYSIZE(buff));
+            sppd->SetLine(1, buff, FALSE, NULL);
+            LoadString(g_hInst, IDS_APP_TITLE, buff, ARRAYSIZE(buff));
+            sppd->SetTitle(buff);
+            sppd->StartProgressDialog(m_hwnd, NULL, PROGDLG_MARQUEEPROGRESS, NULL);
+        }
+
         m_disableCountUpdate = true;
-        EnumerateDataObject(pdtobj, m_spsrm);
+
+        if (E_ABORT == EnumerateDataObject(pdtobj, m_spsrm, sppd))
+        {
+            // User cancelled during enumeration.  Close the dialog.
+            _OnCloseDlg();
+        }
+
+        if (sppd)
+        {
+            sppd->StopProgressDialog();
+        }
+
         m_disableCountUpdate = false;
 
         UINT itemCount = 0;

@@ -145,6 +145,7 @@ BEGIN
     IDS_ORIGINAL            "Original"
     IDS_LISTVIEW_EMPTY      "All items have been filtered out.\nPlease select from the options above to show items."
     IDS_ENTIREITEMNAME      "Item Name and Extension"
+    IDS_LOADING             "Loading..."
     IDC_SMARTRENAME         "SMARTRENAME"
     IDS_COUNTSLABELFMT      "Items Selected: %u | Renaming: %u"
 END
