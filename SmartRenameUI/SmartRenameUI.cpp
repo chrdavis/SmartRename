@@ -359,15 +359,17 @@ void CSmartRenameUI::_Cleanup()
     }
 }
 
-void CSmartRenameUI::_EnumerateItems(_In_ IDataObject* pdtobj)
+HRESULT CSmartRenameUI::_EnumerateItems(_In_ IDataObject* pdtobj)
 {
+    HRESULT hr = S_OK;
     // Enumerate the data object and popuplate the manager
     if (m_spsrm)
     {
         // Add a progress dialog in case enumeration of items takes a long time
         // This also allows the user to cancel enumeration.
         CComPtr<IProgressDialog> sppd;
-        if (SUCCEEDED(CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&sppd))))
+        hr = CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&sppd));
+        if (SUCCEEDED(hr))
         {
             wchar_t buff[100] = { 0 };
             LoadString(g_hInst, IDS_LOADING, buff, ARRAYSIZE(buff));
@@ -375,29 +377,27 @@ void CSmartRenameUI::_EnumerateItems(_In_ IDataObject* pdtobj)
             LoadString(g_hInst, IDS_APP_TITLE, buff, ARRAYSIZE(buff));
             sppd->SetTitle(buff);
             sppd->StartProgressDialog(m_hwnd, NULL, PROGDLG_MARQUEEPROGRESS, NULL);
-        }
 
-        m_disableCountUpdate = true;
+            m_disableCountUpdate = true;
 
-        if (E_ABORT == EnumerateDataObject(pdtobj, m_spsrm, sppd))
-        {
-            // User cancelled during enumeration.  Close the dialog.
-            _OnCloseDlg();
-        }
+            hr = EnumerateDataObject(pdtobj, m_spsrm, sppd);
 
-        if (sppd)
-        {
+            m_disableCountUpdate = false;
+
             sppd->StopProgressDialog();
+
+            if (SUCCEEDED(hr))
+            {
+                UINT itemCount = 0;
+                m_spsrm->GetItemCount(&itemCount);
+                m_listview.SetItemCount(itemCount);
+
+                _UpdateCounts();
+            }
         }
-
-        m_disableCountUpdate = false;
-
-        UINT itemCount = 0;
-        m_spsrm->GetItemCount(&itemCount);
-        m_listview.SetItemCount(itemCount);
-
-        _UpdateCounts();
     }
+
+    return hr;
 }
 
 HRESULT CSmartRenameUI::_ReadSettings()
@@ -608,7 +608,12 @@ void CSmartRenameUI::_OnInitDlg()
     if (m_spdo)
     {
         // Populate the manager from the data object
-        _EnumerateItems(m_spdo);
+        if (FAILED(_EnumerateItems(m_spdo)))
+        {
+            // Failed during enumeration.  Close the dialog.
+            _OnCloseDlg();
+            return;
+        }
     }
 
     // Initialize from stored settings
