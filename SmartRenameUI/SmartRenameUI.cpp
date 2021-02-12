@@ -6,6 +6,7 @@
 #include <helpers.h>
 #include <settings.h>
 #include <windowsx.h>
+#include <SmartRenameEnum.h>
 
 extern HINSTANCE g_hInst;
 
@@ -223,6 +224,61 @@ IFACEMETHODIMP CSmartRenameUI::OnRenameCompleted()
     return S_OK;
 }
 
+// ISmartRenameEnumEvent
+IFACEMETHODIMP CSmartRenameUI::OnStarted()
+{
+    m_enumStartTick = GetTickCount64();
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameUI::OnCompleted(_In_ bool canceled)
+{
+    if (m_sppd)
+    {
+        m_sppd->StopProgressDialog();
+        m_sppd = nullptr;
+    }
+
+    return S_OK;
+}
+IFACEMETHODIMP CSmartRenameUI::OnFoundItem(_In_ ISmartRenameItem* item)
+{
+    // Check if we need to create the progress dialog.  We delay m_progressDlgDelayMS before
+    // showing the progress dialog so the user does not see it briefly on every launch.
+    if (!m_sppd && (GetTickCount64() - m_enumStartTick > m_progressDlgDelayMS))
+    {
+        if (SUCCEEDED(CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&m_sppd))))
+        {
+            wchar_t buff[100] = { 0 };
+            LoadString(g_hInst, IDS_LOADING, buff, ARRAYSIZE(buff));
+            m_sppd->SetLine(1, buff, FALSE, NULL);
+            LoadString(g_hInst, IDS_APP_TITLE, buff, ARRAYSIZE(buff));
+            m_sppd->SetTitle(buff);
+            m_sppd->StartProgressDialog(m_hwnd, NULL, PROGDLG_MARQUEEPROGRESS, NULL);
+        }
+    }
+    
+    if (m_sppd)
+    {
+        if (m_sppd->HasUserCancelled() && m_spsre)
+        {
+            // Cancel the enumeration
+            m_spsre->Cancel();
+        }
+        else
+        {
+            // Update the progress dialog
+            PWSTR pathDisplay = nullptr;
+            if (SUCCEEDED(item->get_path(&pathDisplay)))
+            {
+                m_sppd->SetLine(2, pathDisplay, TRUE, nullptr);
+                CoTaskMemFree(pathDisplay);
+            }
+        }
+    }
+    return S_OK;
+}
+
 // IDropTarget
 IFACEMETHODIMP CSmartRenameUI::DragEnter(_In_ IDataObject* pdtobj, DWORD /* grfKeyState */, POINTL pt, _Inout_ DWORD* pdwEffect)
 {
@@ -365,35 +421,31 @@ HRESULT CSmartRenameUI::_EnumerateItems(_In_ IDataObject* pdtobj)
     // Enumerate the data object and popuplate the manager
     if (m_spsrm)
     {
-        // Add a progress dialog in case enumeration of items takes a long time
-        // This also allows the user to cancel enumeration.
-        CComPtr<IProgressDialog> sppd;
-        hr = CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&sppd));
+        m_disableCountUpdate = true;
+
+        // Ensure we re-create the enumerator
+        m_spsre = nullptr;
+        hr = CSmartRenameEnum::s_CreateInstance(pdtobj, m_spsrm, IID_PPV_ARGS(&m_spsre));
         if (SUCCEEDED(hr))
         {
-            wchar_t buff[100] = { 0 };
-            LoadString(g_hInst, IDS_LOADING, buff, ARRAYSIZE(buff));
-            sppd->SetLine(1, buff, FALSE, NULL);
-            LoadString(g_hInst, IDS_APP_TITLE, buff, ARRAYSIZE(buff));
-            sppd->SetTitle(buff);
-            sppd->StartProgressDialog(m_hwnd, NULL, PROGDLG_MARQUEEPROGRESS, NULL);
-
-            m_disableCountUpdate = true;
-
-            hr = EnumerateDataObject(pdtobj, m_spsrm, sppd);
-
-            m_disableCountUpdate = false;
-
-            sppd->StopProgressDialog();
-
+            DWORD dwCookie = 0;
+            hr = m_spsre->Advise(this, &dwCookie);
             if (SUCCEEDED(hr))
             {
-                UINT itemCount = 0;
-                m_spsrm->GetItemCount(&itemCount);
-                m_listview.SetItemCount(itemCount);
-
-                _UpdateCounts();
+                hr = m_spsre->Start();
+                m_spsre->UnAdvise(dwCookie);
             }
+        }
+
+        m_disableCountUpdate = false;
+        
+        if (SUCCEEDED(hr))
+        {
+            UINT itemCount = 0;
+            m_spsrm->GetItemCount(&itemCount);
+            m_listview.SetItemCount(itemCount);
+
+            _UpdateCounts();
         }
     }
 

@@ -142,6 +142,7 @@
   <ItemGroup>
     <ClInclude Include="Helpers.h" />
     <ClInclude Include="Settings.h" />
+    <ClInclude Include="SmartRenameEnum.h" />
     <ClInclude Include="SmartRenameItem.h" />
     <ClInclude Include="SmartRenameInterfaces.h" />
     <ClInclude Include="SmartRenameManager.h" />
@@ -153,6 +154,7 @@
   <ItemGroup>
     <ClCompile Include="Helpers.cpp" />
     <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="SmartRenameEnum.cpp" />
     <ClCompile Include="SmartRenameItem.cpp" />
     <ClCompile Include="SmartRenameManager.cpp" />
     <ClCompile Include="SmartRenameRegEx.cpp" />

@@ -31,7 +31,8 @@ private:
 class CSmartRenameUI :
     public IDropTarget,
     public ISmartRenameUI,
-    public ISmartRenameManagerEvents
+    public ISmartRenameManagerEvents,
+    public ISmartRenameEnumEvents
 {
 public:
     CSmartRenameUI() :
@@ -61,6 +62,11 @@ public:
     IFACEMETHODIMP OnRegExCompleted(_In_ DWORD threadId);
     IFACEMETHODIMP OnRenameStarted();
     IFACEMETHODIMP OnRenameCompleted();
+
+    // ISmartRenameEnumEvents
+    IFACEMETHODIMP OnStarted();
+    IFACEMETHODIMP OnCompleted(_In_ bool canceled);
+    IFACEMETHODIMP OnFoundItem(_In_ ISmartRenameItem* item);
 
     // IDropTarget
     IFACEMETHODIMP DragEnter(_In_ IDataObject* pdtobj, DWORD grfKeyState, POINTL pt, _Inout_ DWORD* pdwEffect);
@@ -135,12 +141,16 @@ private:
     int m_initialHeight = 0;
     int m_lastWidth = 0;
     int m_lastHeight = 0;
+    ULONGLONG m_enumStartTick = 0;
+    const ULONGLONG m_progressDlgDelayMS = 3000;
     CComPtr<ISmartRenameManager> m_spsrm;
+    CComPtr<ISmartRenameEnum> m_spsre;
     CComPtr<IDataObject> m_spdo;
     CComPtr<IDropTargetHelper> m_spdth;
     CComPtr<IAutoComplete2> m_spSearchAC;
     CComPtr<IUnknown> m_spSearchACL;
     CComPtr<IAutoComplete2> m_spReplaceAC;
     CComPtr<IUnknown> m_spReplaceACL;
+    CComPtr<IProgressDialog> m_sppd;
     CSmartRenameListView m_listview;
 };
