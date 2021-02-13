@@ -92,7 +92,7 @@ IFACEMETHODIMP CSmartRenameEnum::Cancel()
     return S_OK;
 }
 
-HRESULT CSmartRenameEnum::s_CreateInstance(_In_ IDataObject* pdo, _In_ _In_ ISmartRenameManager* psrm, _In_ REFIID iid, _Outptr_ void** resultInterface)
+HRESULT CSmartRenameEnum::s_CreateInstance(_In_ IDataObject* pdo, _In_ ISmartRenameManager* psrm, _In_ REFIID iid, _Outptr_ void** resultInterface)
 {
     *resultInterface = nullptr;
 

@@ -20,7 +20,7 @@ public:
     IFACEMETHODIMP Cancel();
 
 public:
-    static HRESULT s_CreateInstance(_In_ IDataObject* pdo, _In_ _In_ ISmartRenameManager* psrm, _In_ REFIID iid, _Outptr_ void** resultInterface);
+    static HRESULT s_CreateInstance(_In_ IDataObject* pdo, _In_ ISmartRenameManager* psrm, _In_ REFIID iid, _Outptr_ void** resultInterface);
 
 protected:
     CSmartRenameEnum();
