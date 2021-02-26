@@ -252,6 +252,8 @@ IFACEMETHODIMP CSmartRenameUI::OnFoundItem(_In_ ISmartRenameItem* item)
             wchar_t buff[100] = { 0 };
             LoadString(g_hInst, IDS_LOADING, buff, ARRAYSIZE(buff));
             m_sppd->SetLine(1, buff, FALSE, NULL);
+            LoadString(g_hInst, IDS_LOADING_MSG, buff, ARRAYSIZE(buff));
+            m_sppd->SetLine(2, buff, FALSE, NULL);
             LoadString(g_hInst, IDS_APP_TITLE, buff, ARRAYSIZE(buff));
             m_sppd->SetTitle(buff);
             m_sppd->StartProgressDialog(m_hwnd, NULL, PROGDLG_MARQUEEPROGRESS, NULL);
@@ -264,16 +266,6 @@ IFACEMETHODIMP CSmartRenameUI::OnFoundItem(_In_ ISmartRenameItem* item)
         {
             // Cancel the enumeration
             m_spsre->Cancel();
-        }
-        else
-        {
-            // Update the progress dialog
-            PWSTR pathDisplay = nullptr;
-            if (SUCCEEDED(item->get_path(&pathDisplay)))
-            {
-                m_sppd->SetLine(2, pathDisplay, TRUE, nullptr);
-                CoTaskMemFree(pathDisplay);
-            }
         }
     }
     return S_OK;
