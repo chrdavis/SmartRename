@@ -457,7 +457,7 @@ HRESULT CSmartRenameManager::_PerformFileOperation()
         _OnRenameCompleted();
     }
 
-    return 0;
+    return hr;
 }
 
 HRESULT CSmartRenameManager::_CreateFileOpWorkerThread()
