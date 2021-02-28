@@ -27,48 +27,8 @@ IFACEMETHODIMP CSmartRenameEnum::QueryInterface(_In_ REFIID riid, _Outptr_ void*
     return QISearch(this, qit, riid, ppv);
 }
 
-IFACEMETHODIMP CSmartRenameEnum::Advise(_In_ ISmartRenameEnumEvents* events, _Out_ DWORD* cookie)
-{
-    CSRWExclusiveAutoLock lock(&m_lockEvents);
-    m_cookie++;
-    RENAME_ENUM_EVENT srme;
-    srme.cookie = m_cookie;
-    srme.pEvents = events;
-    events->AddRef();
-    m_renameEnumEvents.push_back(srme);
-
-    *cookie = m_cookie;
-
-    return S_OK;
-}
-
-IFACEMETHODIMP CSmartRenameEnum::UnAdvise(_In_ DWORD cookie)
-{
-    HRESULT hr = E_FAIL;
-    CSRWExclusiveAutoLock lock(&m_lockEvents);
-
-    for (std::vector<RENAME_ENUM_EVENT>::iterator it = m_renameEnumEvents.begin(); it != m_renameEnumEvents.end(); ++it)
-    {
-        if (it->cookie == cookie)
-        {
-            hr = S_OK;
-            it->cookie = 0;
-            if (it->pEvents)
-            {
-                it->pEvents->Release();
-                it->pEvents = nullptr;
-            }
-            break;
-        }
-    }
-
-    return hr;
-}
-
-
 IFACEMETHODIMP CSmartRenameEnum::Start()
 {
-    _OnStarted();
     m_canceled = false;
     CComPtr<IShellItemArray> spsia;
     HRESULT hr = SHCreateShellItemArrayFromDataObject(m_spdo, IID_PPV_ARGS(&spsia));
@@ -82,7 +42,6 @@ IFACEMETHODIMP CSmartRenameEnum::Start()
         }
     }
 
-    _OnCompleted();
     return hr;
 }
 
@@ -118,46 +77,6 @@ CSmartRenameEnum::CSmartRenameEnum() :
 
 CSmartRenameEnum::~CSmartRenameEnum()
 {
-}
-
-
-void CSmartRenameEnum::_OnStarted()
-{
-    CSRWSharedAutoLock lock(&m_lockEvents);
-
-    for (std::vector<RENAME_ENUM_EVENT>::iterator it = m_renameEnumEvents.begin(); it != m_renameEnumEvents.end(); ++it)
-    {
-        if (it->pEvents)
-        {
-            it->pEvents->OnStarted();
-        }
-    }
-}
-
-void CSmartRenameEnum::_OnCompleted()
-{
-    CSRWSharedAutoLock lock(&m_lockEvents);
-
-    for (std::vector<RENAME_ENUM_EVENT>::iterator it = m_renameEnumEvents.begin(); it != m_renameEnumEvents.end(); ++it)
-    {
-        if (it->pEvents)
-        {
-            it->pEvents->OnCompleted(m_canceled);
-        }
-    }
-}
-
-void CSmartRenameEnum::_OnFoundItem(_In_ ISmartRenameItem* item)
-{
-    CSRWSharedAutoLock lock(&m_lockEvents);
-
-    for (std::vector<RENAME_ENUM_EVENT>::iterator it = m_renameEnumEvents.begin(); it != m_renameEnumEvents.end(); ++it)
-    {
-        if (it->pEvents)
-        {
-            it->pEvents->OnFoundItem(item);
-        }
-    }
 }
 
 HRESULT CSmartRenameEnum::_Init(_In_ IDataObject* pdo, _In_ ISmartRenameManager* psrm)
@@ -197,7 +116,6 @@ HRESULT CSmartRenameEnum::_ParseEnumItems(_In_ IEnumShellItems* pesi, _In_ int d
                 if (SUCCEEDED(spsrif->Create(spsi, &spNewItem)))
                 {
                     spNewItem->put_depth(depth);
-                    _OnFoundItem(spNewItem);
                     hr = m_spsrm->AddItem(spNewItem);
                     if (SUCCEEDED(hr))
                     {

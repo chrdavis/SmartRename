@@ -155,8 +155,18 @@ IFACEMETHODIMP CSmartRenameUI::get_showUI(_Out_ bool* showUI)
 }
 
 // ISmartRenameManagerEvents
-IFACEMETHODIMP CSmartRenameUI::OnItemAdded(_In_ ISmartRenameItem*)
+IFACEMETHODIMP CSmartRenameUI::OnItemAdded(_In_ ISmartRenameItem* item)
 {
+    // Check if the user canceled the enumeration from the progress dialog UI
+    if (m_srpui.IsCanceled())
+    {
+        m_srpui.Stop();
+        if (m_spsre)
+        {
+            // Cancel the enumeration
+            m_spsre->Cancel();
+        }
+    }
     return S_OK;
 }
 
@@ -221,53 +231,6 @@ IFACEMETHODIMP CSmartRenameUI::OnRenameCompleted()
 
     // Close the window
     PostMessage(m_hwnd, WM_CLOSE, (WPARAM)0, (LPARAM)0);
-    return S_OK;
-}
-
-// ISmartRenameEnumEvent
-IFACEMETHODIMP CSmartRenameUI::OnStarted()
-{
-    m_enumStartTick = GetTickCount64();
-    return S_OK;
-}
-
-IFACEMETHODIMP CSmartRenameUI::OnCompleted(_In_ bool canceled)
-{
-    if (m_sppd)
-    {
-        m_sppd->StopProgressDialog();
-        m_sppd = nullptr;
-    }
-
-    return S_OK;
-}
-IFACEMETHODIMP CSmartRenameUI::OnFoundItem(_In_ ISmartRenameItem* item)
-{
-    // Check if we need to create the progress dialog.  We delay m_progressDlgDelayMS before
-    // showing the progress dialog so the user does not see it briefly on every launch.
-    if (!m_sppd && (GetTickCount64() - m_enumStartTick > m_progressDlgDelayMS))
-    {
-        if (SUCCEEDED(CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&m_sppd))))
-        {
-            wchar_t buff[100] = { 0 };
-            LoadString(g_hInst, IDS_LOADING, buff, ARRAYSIZE(buff));
-            m_sppd->SetLine(1, buff, FALSE, NULL);
-            LoadString(g_hInst, IDS_LOADING_MSG, buff, ARRAYSIZE(buff));
-            m_sppd->SetLine(2, buff, FALSE, NULL);
-            LoadString(g_hInst, IDS_APP_TITLE, buff, ARRAYSIZE(buff));
-            m_sppd->SetTitle(buff);
-            m_sppd->StartProgressDialog(m_hwnd, NULL, PROGDLG_MARQUEEPROGRESS, NULL);
-        }
-    }
-    
-    if (m_sppd)
-    {
-        if (m_sppd->HasUserCancelled() && m_spsre)
-        {
-            // Cancel the enumeration
-            m_spsre->Cancel();
-        }
-    }
     return S_OK;
 }
 
@@ -420,13 +383,9 @@ HRESULT CSmartRenameUI::_EnumerateItems(_In_ IDataObject* pdtobj)
         hr = CSmartRenameEnum::s_CreateInstance(pdtobj, m_spsrm, IID_PPV_ARGS(&m_spsre));
         if (SUCCEEDED(hr))
         {
-            DWORD dwCookie = 0;
-            hr = m_spsre->Advise(this, &dwCookie);
-            if (SUCCEEDED(hr))
-            {
-                hr = m_spsre->Start();
-                m_spsre->UnAdvise(dwCookie);
-            }
+            m_srpui.Start();
+            hr = m_spsre->Start();
+            m_srpui.Stop();
         }
 
         m_disableCountUpdate = false;
@@ -1276,4 +1235,158 @@ void CSmartRenameListView::_UpdateHeaderCheckState(_In_ bool check)
     }
 }
 
+IFACEMETHODIMP CSmartRenameProgressUI::QueryInterface(__in REFIID riid, __deref_out void** ppv)
+{
+    static const QITAB qit[] =
+    {
+        QITABENT(CSmartRenameProgressUI, IUnknown),
+        { 0 },
+    };
+    return QISearch(this, qit, riid, ppv);
+}
 
+IFACEMETHODIMP_(ULONG) CSmartRenameProgressUI::AddRef()
+{
+    return InterlockedIncrement(&m_refCount);
+}
+
+IFACEMETHODIMP_(ULONG) CSmartRenameProgressUI::Release()
+{
+    long refCount = InterlockedDecrement(&m_refCount);
+    if (refCount == 0)
+    {
+        delete this;
+    }
+    return refCount;
+}
+
+#define TIMERID_CHECKCANCELED 101
+#define CANCEL_CHECK_INTERVAL 500
+
+HRESULT CSmartRenameProgressUI::Start()
+{
+    _Cleanup();
+    m_canceled = false;
+    m_workerThreadHandle = CreateThread(nullptr, 0, s_workerThread, this, 0, nullptr);
+    return (m_workerThreadHandle) ? S_OK : E_FAIL;
+}
+
+DWORD WINAPI CSmartRenameProgressUI::s_workerThread(_In_ void* pv)
+{
+    if (SUCCEEDED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE)))
+    {
+        CSmartRenameProgressUI* pThis = reinterpret_cast<CSmartRenameProgressUI*>(pv);
+        if (pThis)
+        {
+            HWND hwndMessage = CreateMsgWindow(g_hInst, s_msgWndProc, pThis);
+
+            SetTimer(hwndMessage, TIMERID_CHECKCANCELED, CANCEL_CHECK_INTERVAL, nullptr);
+
+            if (SUCCEEDED(CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&pThis->m_sppd))))
+            {
+                wchar_t buff[100] = { 0 };
+                LoadString(g_hInst, IDS_LOADING, buff, ARRAYSIZE(buff));
+                pThis->m_sppd->SetLine(1, buff, FALSE, NULL);
+                LoadString(g_hInst, IDS_LOADING_MSG, buff, ARRAYSIZE(buff));
+                pThis->m_sppd->SetLine(2, buff, FALSE, NULL);
+                LoadString(g_hInst, IDS_APP_TITLE, buff, ARRAYSIZE(buff));
+                pThis->m_sppd->SetTitle(buff);
+                SetTimer(hwndMessage, TIMERID_CHECKCANCELED, CANCEL_CHECK_INTERVAL, nullptr);
+                pThis->m_sppd->StartProgressDialog(NULL, NULL, PROGDLG_MARQUEEPROGRESS, NULL);
+            }
+
+            while (pThis->m_sppd && !pThis->m_canceled)
+            {
+                MSG msg;
+                while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+                {
+                    TranslateMessage(&msg);
+                    DispatchMessage(&msg);
+                }
+            }
+
+            KillTimer(hwndMessage, TIMERID_CHECKCANCELED);
+            DestroyWindow(hwndMessage);
+        }
+
+        CoUninitialize();
+    }
+
+    return S_OK;
+}
+
+HRESULT CSmartRenameProgressUI::Stop()
+{
+    _Cleanup();
+    return S_OK;
+}
+
+void CSmartRenameProgressUI::_Cleanup()
+{
+    if (m_sppd)
+    {
+        m_sppd->StopProgressDialog();
+        m_sppd = nullptr;
+    }
+
+    if (m_workerThreadHandle)
+    {
+        CloseHandle(m_workerThreadHandle);
+        m_workerThreadHandle = nullptr;
+    }
+}
+
+void CSmartRenameProgressUI::_UpdateCancelState()
+{
+    m_canceled = (m_sppd && m_sppd->HasUserCancelled());
+}
+
+LRESULT CALLBACK CSmartRenameProgressUI::s_msgWndProc(_In_ HWND hwnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+    LRESULT lRes = 0;
+
+    CSmartRenameProgressUI* pThis = (CSmartRenameProgressUI*)GetWindowLongPtr(hwnd, 0);
+    if (pThis != nullptr)
+    {
+        lRes = pThis->_WndProc(hwnd, uMsg, wParam, lParam);
+        if (uMsg == WM_NCDESTROY)
+        {
+            SetWindowLongPtr(hwnd, 0, NULL);
+        }
+    }
+    else
+    {
+        lRes = DefWindowProc(hwnd, uMsg, wParam, lParam);
+    }
+
+    return lRes;
+}
+
+LRESULT CSmartRenameProgressUI::_WndProc(_In_ HWND hwnd, _In_ UINT msg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+    LRESULT lRes = 0;
+
+    AddRef();
+
+    switch (msg)
+    {
+    case WM_TIMER:
+        if (wParam == TIMERID_CHECKCANCELED)
+        {
+            _UpdateCancelState();
+        }
+        break;
+
+    case WM_DESTROY:
+        KillTimer(hwnd, TIMERID_CHECKCANCELED);
+        break;
+
+    default:
+        lRes = DefWindowProc(hwnd, msg, wParam, lParam);
+        break;
+    }
+
+    Release();
+
+    return lRes;
+}

@@ -28,11 +28,45 @@ private:
     HWND m_hwndLV = nullptr;
 };
 
+class CSmartRenameProgressUI :
+    public IUnknown
+{
+public:
+    CSmartRenameProgressUI() :
+        m_refCount(1)
+    {
+    }
+
+    ~CSmartRenameProgressUI() = default;
+
+    // IUnknown
+    IFACEMETHODIMP QueryInterface(__in REFIID riid, __deref_out void** ppv);
+    IFACEMETHODIMP_(ULONG) AddRef();
+    IFACEMETHODIMP_(ULONG) Release();
+
+    HRESULT Start();
+    HRESULT Stop();
+    bool IsCanceled() { return m_canceled; }
+
+private:
+    static LRESULT CALLBACK s_msgWndProc(_In_ HWND hwnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
+    LRESULT _WndProc(_In_ HWND hwnd, _In_ UINT msg, _In_ WPARAM wParam, _In_ LPARAM lParam);
+
+    static DWORD WINAPI s_workerThread(_In_ void* pv);
+
+    void _UpdateCancelState();
+    void _Cleanup();
+
+    long m_refCount = 0;
+    bool m_canceled = false;
+    HANDLE m_workerThreadHandle = nullptr;
+    CComPtr<IProgressDialog> m_sppd;
+};
+
 class CSmartRenameUI :
     public IDropTarget,
     public ISmartRenameUI,
-    public ISmartRenameManagerEvents,
-    public ISmartRenameEnumEvents
+    public ISmartRenameManagerEvents
 {
 public:
     CSmartRenameUI() :
@@ -62,11 +96,6 @@ public:
     IFACEMETHODIMP OnRegExCompleted(_In_ DWORD threadId);
     IFACEMETHODIMP OnRenameStarted();
     IFACEMETHODIMP OnRenameCompleted();
-
-    // ISmartRenameEnumEvents
-    IFACEMETHODIMP OnStarted();
-    IFACEMETHODIMP OnCompleted(_In_ bool canceled);
-    IFACEMETHODIMP OnFoundItem(_In_ ISmartRenameItem* item);
 
     // IDropTarget
     IFACEMETHODIMP DragEnter(_In_ IDataObject* pdtobj, DWORD grfKeyState, POINTL pt, _Inout_ DWORD* pdwEffect);
@@ -141,8 +170,7 @@ private:
     int m_initialHeight = 0;
     int m_lastWidth = 0;
     int m_lastHeight = 0;
-    ULONGLONG m_enumStartTick = 0;
-    const ULONGLONG m_progressDlgDelayMS = 3000;
+    CSmartRenameProgressUI m_srpui;
     CComPtr<ISmartRenameManager> m_spsrm;
     CComPtr<ISmartRenameEnum> m_spsre;
     CComPtr<IDataObject> m_spdo;
@@ -151,6 +179,5 @@ private:
     CComPtr<IUnknown> m_spSearchACL;
     CComPtr<IAutoComplete2> m_spReplaceAC;
     CComPtr<IUnknown> m_spReplaceACL;
-    CComPtr<IProgressDialog> m_sppd;
     CSmartRenameListView m_listview;
 };
