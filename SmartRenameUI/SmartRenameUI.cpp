@@ -368,6 +368,8 @@ void CSmartRenameUI::_Cleanup()
     {
         RevokeDragDrop(m_hwnd);
     }
+
+    m_hwnd = NULL;
 }
 
 HRESULT CSmartRenameUI::_EnumerateItems(_In_ IDataObject* pdtobj)
@@ -1267,7 +1269,12 @@ HRESULT CSmartRenameProgressUI::Start()
 {
     _Cleanup();
     m_canceled = false;
+    AddRef();
     m_workerThreadHandle = CreateThread(nullptr, 0, s_workerThread, this, 0, nullptr);
+    if (!m_workerThreadHandle)
+    {
+        Release();
+    }
     return (m_workerThreadHandle) ? S_OK : E_FAIL;
 }
 
@@ -1282,20 +1289,22 @@ DWORD WINAPI CSmartRenameProgressUI::s_workerThread(_In_ void* pv)
 
             SetTimer(hwndMessage, TIMERID_CHECKCANCELED, CANCEL_CHECK_INTERVAL, nullptr);
 
-            if (SUCCEEDED(CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&pThis->m_sppd))))
+            CComPtr<IProgressDialog> sppd;
+            if (SUCCEEDED(CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC, IID_PPV_ARGS(&sppd))))
             {
+                pThis->m_sppd = sppd;
                 wchar_t buff[100] = { 0 };
                 LoadString(g_hInst, IDS_LOADING, buff, ARRAYSIZE(buff));
-                pThis->m_sppd->SetLine(1, buff, FALSE, NULL);
+                sppd->SetLine(1, buff, FALSE, NULL);
                 LoadString(g_hInst, IDS_LOADING_MSG, buff, ARRAYSIZE(buff));
-                pThis->m_sppd->SetLine(2, buff, FALSE, NULL);
+                sppd->SetLine(2, buff, FALSE, NULL);
                 LoadString(g_hInst, IDS_APP_TITLE, buff, ARRAYSIZE(buff));
-                pThis->m_sppd->SetTitle(buff);
+                sppd->SetTitle(buff);
                 SetTimer(hwndMessage, TIMERID_CHECKCANCELED, CANCEL_CHECK_INTERVAL, nullptr);
-                pThis->m_sppd->StartProgressDialog(NULL, NULL, PROGDLG_MARQUEEPROGRESS, NULL);
+                sppd->StartProgressDialog(NULL, NULL, PROGDLG_MARQUEEPROGRESS, NULL);
             }
 
-            while (pThis->m_sppd && !pThis->m_canceled)
+            while (pThis->m_sppd && !sppd->HasUserCancelled())
             {
                 MSG msg;
                 while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
@@ -1305,8 +1314,13 @@ DWORD WINAPI CSmartRenameProgressUI::s_workerThread(_In_ void* pv)
                 }
             }
 
+            // Ensure dialog is stopped
+            sppd->StopProgressDialog();
+
             KillTimer(hwndMessage, TIMERID_CHECKCANCELED);
             DestroyWindow(hwndMessage);
+
+            pThis->Release();
         }
 
         CoUninitialize();
@@ -1331,6 +1345,8 @@ void CSmartRenameProgressUI::_Cleanup()
 
     if (m_workerThreadHandle)
     {
+        // Wait for up to 5 seconds for worker thread to finish
+        WaitForSingleObject(m_workerThreadHandle, 5000);
         CloseHandle(m_workerThreadHandle);
         m_workerThreadHandle = nullptr;
     }
@@ -1378,6 +1394,7 @@ LRESULT CSmartRenameProgressUI::_WndProc(_In_ HWND hwnd, _In_ UINT msg, _In_ WPA
         break;
 
     case WM_DESTROY:
+        _UpdateCancelState();
         KillTimer(hwnd, TIMERID_CHECKCANCELED);
         break;
 
