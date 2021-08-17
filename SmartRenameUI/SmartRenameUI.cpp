@@ -8,6 +8,8 @@
 #include <windowsx.h>
 #include <SmartRenameEnum.h>
 
+#include <thread>
+
 extern HINSTANCE g_hInst;
 
 
@@ -1271,7 +1273,11 @@ HRESULT CSmartRenameProgressUI::Start()
     m_canceled = false;
     AddRef();
     m_workerThreadHandle = CreateThread(nullptr, 0, s_workerThread, this, 0, nullptr);
-    if (!m_workerThreadHandle)
+    if (m_workerThreadHandle)
+    {
+        m_loadingThread = true;
+    }
+    else
     {
         Release();
     }
@@ -1303,6 +1309,8 @@ DWORD WINAPI CSmartRenameProgressUI::s_workerThread(_In_ void* pv)
                 SetTimer(hwndMessage, TIMERID_CHECKCANCELED, CANCEL_CHECK_INTERVAL, nullptr);
                 sppd->StartProgressDialog(NULL, NULL, PROGDLG_MARQUEEPROGRESS, NULL);
             }
+
+            pThis->m_loadingThread = false;
 
             while (pThis->m_sppd && !sppd->HasUserCancelled())
             {
@@ -1337,6 +1345,11 @@ HRESULT CSmartRenameProgressUI::Stop()
 
 void CSmartRenameProgressUI::_Cleanup()
 {
+    while (m_loadingThread.load())
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
     if (m_sppd)
     {
         m_sppd->StopProgressDialog();
