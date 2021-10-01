@@ -108,7 +108,7 @@ IFACEMETHODIMP_(ULONG) CSmartRenameUI::Release()
     return refCount;
 }
 
-HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _In_ bool enableDragDrop, _Outptr_ ISmartRenameUI** ppsrui)
+HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IUnknown* punk, _In_ bool enableDragDrop, _Outptr_ ISmartRenameUI** ppsrui)
 {
     *ppsrui = nullptr;
     CSmartRenameUI *prui = new CSmartRenameUI();
@@ -116,7 +116,7 @@ HRESULT CSmartRenameUI::s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt
     if (SUCCEEDED(hr))
     {
         // Pass the ISmartRenameManager to the ISmartRenameUI so it can subscribe to events
-        hr = prui->_Initialize(psrm, pdo, enableDragDrop);
+        hr = prui->_Initialize(psrm, punk, enableDragDrop);
         if (SUCCEEDED(hr))
         {
             hr = prui->QueryInterface(IID_PPV_ARGS(ppsrui));
@@ -289,13 +289,13 @@ IFACEMETHODIMP CSmartRenameUI::Drop(_In_ IDataObject* pdtobj, DWORD, POINTL pt, 
     return S_OK;
 }
 
-HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _In_ bool enableDragDrop)
+HRESULT CSmartRenameUI::_Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IUnknown* punk, _In_ bool enableDragDrop)
 {
     // Cache the smart rename manager
     m_spsrm = psrm;
 
-    // Cache the data object for enumeration later
-    m_spdo = pdo;
+    // Cache the punk for enumeration later
+    m_spunk = punk;
 
     m_enableDragDrop = enableDragDrop;
 
@@ -363,7 +363,7 @@ void CSmartRenameUI::_Cleanup()
         m_spsrm = nullptr;
     }
 
-    m_spdo = nullptr;
+    m_spunk = nullptr;
     m_spdth = nullptr;
 
     if (m_enableDragDrop)
@@ -374,17 +374,17 @@ void CSmartRenameUI::_Cleanup()
     m_hwnd = NULL;
 }
 
-HRESULT CSmartRenameUI::_EnumerateItems(_In_ IDataObject* pdtobj)
+HRESULT CSmartRenameUI::_EnumerateItems(_In_ IUnknown* punk)
 {
     HRESULT hr = S_OK;
-    // Enumerate the data object and popuplate the manager
+    // Enumerate and popuplate the manager
     if (m_spsrm)
     {
         m_disableCountUpdate = true;
 
         // Ensure we re-create the enumerator
         m_spsre = nullptr;
-        hr = CSmartRenameEnum::s_CreateInstance(pdtobj, m_spsrm, IID_PPV_ARGS(&m_spsre));
+        hr = CSmartRenameEnum::s_CreateInstance(punk, m_spsrm, IID_PPV_ARGS(&m_spsre));
         if (SUCCEEDED(hr))
         {
             m_srpui.Start();
@@ -612,10 +612,10 @@ void CSmartRenameUI::_OnInitDlg()
 
     m_listview.Init(m_hwndLV);
 
-    if (m_spdo)
+    if (m_spunk)
     {
         // Populate the manager from the data object
-        if (FAILED(_EnumerateItems(m_spdo)))
+        if (FAILED(_EnumerateItems(m_spunk)))
         {
             // Failed during enumeration.  Close the dialog.
             _OnCloseDlg();

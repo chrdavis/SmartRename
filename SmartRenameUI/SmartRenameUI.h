@@ -105,7 +105,7 @@ public:
     IFACEMETHODIMP DragLeave();
     IFACEMETHODIMP Drop(_In_ IDataObject* pdtobj, DWORD grfKeyState, POINTL pt, _Inout_ DWORD* pdwEffect);
 
-    static HRESULT s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _In_ bool enableDragDrop, _Outptr_ ISmartRenameUI** ppsrui);
+    static HRESULT s_CreateInstance(_In_ ISmartRenameManager* psrm, _In_opt_ IUnknown* punk, _In_ bool enableDragDrop, _Outptr_ ISmartRenameUI** ppsrui);
 
 private:
     ~CSmartRenameUI()
@@ -129,7 +129,7 @@ private:
         return pDlg ? pDlg->_DlgProc(uMsg, wParam, lParam) : FALSE;
     }
 
-    HRESULT _Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IDataObject* pdo, _In_ bool enableDragDrop);
+    HRESULT _Initialize(_In_ ISmartRenameManager* psrm, _In_opt_ IUnknown* punk, _In_ bool enableDragDrop);
     HRESULT _InitAutoComplete();
     void _Cleanup();
 
@@ -153,7 +153,7 @@ private:
     void _SetCheckboxesFromFlags(_In_ DWORD flags);
     void _ValidateFlagCheckbox(_In_ DWORD checkBoxId);
 
-    HRESULT _EnumerateItems(_In_ IDataObject* pdtobj);
+    HRESULT _EnumerateItems(_In_ IUnknown* punk);
     void _UpdateCounts();
 
     long m_refCount = 0;
@@ -175,7 +175,7 @@ private:
     CSmartRenameProgressUI m_srpui;
     CComPtr<ISmartRenameManager> m_spsrm;
     CComPtr<ISmartRenameEnum> m_spsre;
-    CComPtr<IDataObject> m_spdo;
+    CComPtr<IUnknown> m_spunk;
     CComPtr<IDropTargetHelper> m_spdth;
     CComPtr<IAutoComplete2> m_spSearchAC;
     CComPtr<IUnknown> m_spSearchACL;

@@ -72,7 +72,7 @@ BEGIN
             VALUE "FileDescription", "Smart Rename Shell Extension"
             VALUE "FileVersion", "1.1.0.2"
             VALUE "InternalName", "SmartRenameExt.dll"
-            VALUE "LegalCopyright", "Copyright (C) 2020"
+            VALUE "LegalCopyright", "Copyright (C) 2021"
             VALUE "OriginalFilename", "SmartRenameExt.dll"
             VALUE "ProductName", "Smart Rename Shell Extension"
             VALUE "ProductVersion", "1.1.0.2"

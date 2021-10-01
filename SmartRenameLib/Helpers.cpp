@@ -119,6 +119,23 @@ HWND CreateMsgWindow(_In_ HINSTANCE hInst, _In_ WNDPROC pfnWndProc, _In_ void* p
     return hwnd;
 }
 
+HRESULT GetShellItemArrayFromUnknown(_In_ IUnknown* punk, _COM_Outptr_ IShellItemArray** ppsia)
+{
+    *ppsia = nullptr;
+    CComPtr<IDataObject> spdo;
+    HRESULT hr;
+    if (SUCCEEDED(punk->QueryInterface(IID_PPV_ARGS(&spdo))))
+    {
+        hr = SHCreateShellItemArrayFromDataObject(spdo, IID_PPV_ARGS(ppsia));
+    }
+    else
+    {
+        hr = punk->QueryInterface(IID_PPV_ARGS(ppsia));
+    }
+
+    return hr;
+}
+
 BOOL GetEnumeratedFileName(__out_ecount(cchMax) PWSTR pszUniqueName, UINT cchMax,
     __in PCWSTR pszTemplate, __in_opt PCWSTR pszDir, unsigned long ulMinLong,
     __inout unsigned long* pulNumUsed)

@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "SmartRenameEnum.h"
+#include "helpers.h"
 #include <ShlGuid.h>
 
 IFACEMETHODIMP_(ULONG) CSmartRenameEnum::AddRef()
@@ -31,7 +32,7 @@ IFACEMETHODIMP CSmartRenameEnum::Start()
 {
     m_canceled = false;
     CComPtr<IShellItemArray> spsia;
-    HRESULT hr = SHCreateShellItemArrayFromDataObject(m_spdo, IID_PPV_ARGS(&spsia));
+    HRESULT hr = GetShellItemArrayFromUnknown(m_spunk, &spsia);
     if (SUCCEEDED(hr))
     {
         CComPtr<IEnumShellItems> spesi;
@@ -51,7 +52,7 @@ IFACEMETHODIMP CSmartRenameEnum::Cancel()
     return S_OK;
 }
 
-HRESULT CSmartRenameEnum::s_CreateInstance(_In_ IDataObject* pdo, _In_ ISmartRenameManager* psrm, _In_ REFIID iid, _Outptr_ void** resultInterface)
+HRESULT CSmartRenameEnum::s_CreateInstance(_In_ IUnknown* punk, _In_ ISmartRenameManager* psrm, _In_ REFIID iid, _Outptr_ void** resultInterface)
 {
     *resultInterface = nullptr;
 
@@ -59,7 +60,7 @@ HRESULT CSmartRenameEnum::s_CreateInstance(_In_ IDataObject* pdo, _In_ ISmartRen
     HRESULT hr = newRenameEnum ? S_OK : E_OUTOFMEMORY;
     if (SUCCEEDED(hr))
     {
-        hr = newRenameEnum->_Init(pdo, psrm);
+        hr = newRenameEnum->_Init(punk, psrm);
         if (SUCCEEDED(hr))
         {
             hr = newRenameEnum->QueryInterface(iid, resultInterface);
@@ -79,9 +80,9 @@ CSmartRenameEnum::~CSmartRenameEnum()
 {
 }
 
-HRESULT CSmartRenameEnum::_Init(_In_ IDataObject* pdo, _In_ ISmartRenameManager* psrm)
+HRESULT CSmartRenameEnum::_Init(_In_ IUnknown* punk, _In_ ISmartRenameManager* psrm)
 {
-    m_spdo = pdo;
+    m_spunk = punk;
     m_spsrm = psrm;
     return S_OK;
 }

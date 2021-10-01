@@ -22,7 +22,7 @@ CSmartRenameMenu::CSmartRenameMenu()
 
 CSmartRenameMenu::~CSmartRenameMenu()
 {
-    m_spdo = nullptr;
+    m_spia = nullptr;
     DeleteObject(m_hbmpIcon);
     DllRelease();
 }
@@ -48,7 +48,7 @@ HRESULT CSmartRenameMenu::Initialize(_In_opt_ PCIDLIST_ABSOLUTE, _In_ IDataObjec
         return E_FAIL;
 
     // Cache the data object to be used later
-    m_spdo = pdtobj;
+    GetShellItemArrayFromUnknown(pdtobj, &m_spia);
     return S_OK;
 }
 
@@ -64,7 +64,7 @@ HRESULT CSmartRenameMenu::QueryContextMenu(HMENU hMenu, UINT index, UINT uIDFirs
         return E_FAIL;
 
     HRESULT hr = E_UNEXPECTED;
-    if (m_spdo && !(uFlags & (CMF_DEFAULTONLY | CMF_VERBSONLY | CMF_OPTIMIZEFORINVOKE)))
+    if (m_spia && !(uFlags & (CMF_DEFAULTONLY | CMF_VERBSONLY | CMF_OPTIMIZEFORINVOKE)))
     {
         wchar_t menuName[64] = { 0 };
         LoadString(g_hInst, IDS_SMARTRENAME, menuName, ARRAYSIZE(menuName));
@@ -113,25 +113,88 @@ HRESULT CSmartRenameMenu::InvokeCommand(_In_ LPCMINVOKECOMMANDINFO pici)
         (IS_INTRESOURCE(pici->lpVerb)) &&
         (LOWORD(pici->lpVerb) == 0))
     {
-        InvokeStruct* pInvokeData = new InvokeStruct;
-        hr = pInvokeData ? S_OK : E_OUTOFMEMORY;
+        hr = _InvokeInternal(pici->hwnd);
+    }
+
+    return hr;
+}
+
+// IExplorerCommand
+IFACEMETHODIMP CSmartRenameMenu::GetTitle(_In_opt_ IShellItemArray* psia, _Outptr_result_nullonfailure_ PWSTR* name)
+{
+    *name = nullptr;
+    wchar_t menuName[64] = { 0 };
+    LoadString(g_hInst, IDS_SMARTRENAME, menuName, ARRAYSIZE(menuName));
+    return SHStrDup(menuName, name);
+}
+
+IFACEMETHODIMP CSmartRenameMenu::GetIcon(_In_opt_ IShellItemArray*, _Outptr_result_nullonfailure_ PWSTR* icon)
+{
+    *icon = nullptr;
+#ifdef _WIN64
+    return SHStrDup(L"SmartRenameExt64.dll,-132", icon);
+#else
+    return SHStrDup(L"SmartRenameExt32.dll,-132", icon);
+#endif
+}
+
+IFACEMETHODIMP CSmartRenameMenu::GetState(_In_opt_ IShellItemArray* psia, _In_ BOOL okToBeSlow, _Out_ EXPCMDSTATE* cmdState)
+{
+    // Check if we have disabled ourselves
+    *cmdState = (CSettings::GetEnabled()) ? ECS_ENABLED : ECS_HIDDEN;
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameMenu::Invoke(_In_opt_ IShellItemArray* psia, _In_opt_ IBindCtx*)
+{
+    HRESULT hr = E_FAIL;
+    if (CSettings::GetEnabled() && psia)
+    {
+        m_spia = psia;
+        hr = _InvokeInternal(nullptr);
+    }
+
+    return hr;
+}
+
+// IObjectWithSites
+IFACEMETHODIMP CSmartRenameMenu::SetSite(_In_ IUnknown* punk)
+{
+    m_spSite = punk;
+    return S_OK;
+}
+
+IFACEMETHODIMP CSmartRenameMenu::GetSite(_In_ REFIID riid, _COM_Outptr_ void** ppunk)
+{
+    *ppunk = nullptr;
+    HRESULT hr = E_FAIL;
+    if (m_spSite)
+    {
+        hr = m_spSite->QueryInterface(riid, ppunk);
+    }
+    return hr;
+}
+
+HRESULT CSmartRenameMenu::_InvokeInternal(_In_opt_ HWND hwndParent)
+{
+    InvokeStruct* pInvokeData = new InvokeStruct;
+    HRESULT hr = pInvokeData ? S_OK : E_OUTOFMEMORY;
+    if (SUCCEEDED(hr))
+    {
+        pInvokeData->hwndParent = hwndParent;
+        hr = CoMarshalInterThreadInterfaceInStream(__uuidof(m_spia), m_spia, &(pInvokeData->pstrm));
         if (SUCCEEDED(hr))
         {
-            pInvokeData->hwndParent = pici->hwnd;
-            hr = CoMarshalInterThreadInterfaceInStream(__uuidof(m_spdo), m_spdo, &(pInvokeData->pstrm));
-            if (SUCCEEDED(hr))
-            {
-                hr = SHCreateThread(s_SmartRenameUIThreadProc, pInvokeData, CTF_COINIT | CTF_PROCESS_REF, nullptr) ? S_OK : E_FAIL;
-                if (FAILED(hr))
-                {
-                    pInvokeData->pstrm->Release(); // if we failed to create the thread, then we must release the stream
-                }
-            }
-
+            hr = SHCreateThread(s_SmartRenameUIThreadProc, pInvokeData, CTF_COINIT | CTF_PROCESS_REF, nullptr) ? S_OK : E_FAIL;
             if (FAILED(hr))
             {
-                delete pInvokeData;
+                pInvokeData->pstrm->Release(); // if we failed to create the thread, then we must release the stream
             }
+        }
+
+        if (FAILED(hr))
+        {
+            delete pInvokeData;
         }
     }
 
@@ -141,8 +204,8 @@ HRESULT CSmartRenameMenu::InvokeCommand(_In_ LPCMINVOKECOMMANDINFO pici)
 DWORD WINAPI CSmartRenameMenu::s_SmartRenameUIThreadProc(_In_ void* pData)
 {
     InvokeStruct* pInvokeData = static_cast<InvokeStruct*>(pData);
-    CComPtr<IDataObject> spdo;
-    if (SUCCEEDED(CoGetInterfaceAndReleaseStream(pInvokeData->pstrm, IID_PPV_ARGS(&spdo))))
+    CComPtr<IUnknown> spunk;
+    if (SUCCEEDED(CoGetInterfaceAndReleaseStream(pInvokeData->pstrm, IID_PPV_ARGS(&spunk))))
     {
         // Create the smart rename manager
         CComPtr<ISmartRenameManager> spsrm;
@@ -157,7 +220,7 @@ DWORD WINAPI CSmartRenameMenu::s_SmartRenameUIThreadProc(_In_ void* pData)
                 {
                     // Create the smart rename UI instance and pass the smart rename manager
                     CComPtr<ISmartRenameUI> spsrui;
-                    if (SUCCEEDED(CSmartRenameUI::s_CreateInstance(spsrm, spdo, false, &spsrui)))
+                    if (SUCCEEDED(CSmartRenameUI::s_CreateInstance(spsrm, spunk, false, &spsrui)))
                     {
                         // Call blocks until we are done
                         spsrui->Show(pInvokeData->hwndParent);
